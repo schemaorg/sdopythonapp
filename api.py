@@ -1307,7 +1307,7 @@ def read_file (filename):
 def full_path(filename):
     """convert local file name to full path."""
     import os.path
-    folder = os.path.dirname(os.path.realpath(__file__))
+    folder = os.getcwd()
     return os.path.join(folder, filename)
 
 
