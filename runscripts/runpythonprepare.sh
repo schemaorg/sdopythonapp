@@ -5,14 +5,10 @@ set -u
 PWD="`pwd`"
 PROG="`basename $0`"
 echo $PROG
+INVENTORY="$1"
 
-######### sdositeapp prepare script #######
-LIST="*.yaml
-    data
-    docs
-    templates
-    *.json"
-    
+######### sdopythonapp prepare script #######
+LIST=`cat $INVENTORY`
 
 if [ ! -d runscripts ]
 then
