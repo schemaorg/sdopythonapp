@@ -59,7 +59,6 @@ if not SdoConfig.valid:
     os.exit()
 
 PYTHONAPP_VERSION="2.0"
-SCHEMA_VERSION="Unknown"
 
 if not getInTestHarness():
     GAE_APP_ID = app_identity.get_application_id()
@@ -72,7 +71,10 @@ sitemode = "mainsite" # whitespaced list for CSS tags,
             # e.g. "mainsite testsite" when off expected domains
             # "extensionsite" when in an extension (e.g. blue?)
 
-releaselog = {}
+SCHEMA_VERSION="Unknown"
+releaselog = {
+            "Unknown": "1970-01-01"
+}
 
 version_locs = ["site/versions.json","versions.json"]
 for ver in version_locs:
