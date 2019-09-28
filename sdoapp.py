@@ -58,6 +58,7 @@ if not SdoConfig.valid:
     log.error("Invalid config from '%s' or its includes !!" % CONFIGFILE)
     os.exit()
 
+PYTHONAPP_VERSION="2.0"
 SCHEMA_VERSION="3.9"
 
 if not getInTestHarness():
@@ -84,6 +85,25 @@ releaselog = {  "2.0": "2015-05-13",
                 "3.7": "2019-06-01",
                 "3.8": "2019-07-01",
                 "3.9": "2019-08-01" }
+
+log.info("PWD: %s" % os.getcwd())
+version_locs = ["site/versions.json","versions.json"]
+for ver in version_locs:
+    log.info("Trying %s versions file" % ver)
+    try:
+        with open(ver) as json_file:
+            versions = json.load(json_file)
+        log.info("Loaded %s" % ver)
+        schemaversion = versions['schemaversion']
+        log.info("schemaversion: %s" % schemaversion)
+        rlog = versions[u'releaseLog']
+        log.info("releaseLog: %s" % rlog)
+        log.info()
+        break
+    except Exception as e:
+        log.info("%s" % e)
+    
+log.info("versions: %s" % versions)
 
 silent_skip_list =  [ "favicon.ico" ] # Do nothing for now
 
