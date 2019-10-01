@@ -1818,9 +1818,10 @@ class SdoConfig():
             if len(res):
                 for row in res:
                     loc = row.loc
+                    loc = cls.varsub(str(loc))
                     log.info("Found Redirect to config file: %s" % loc)
                     cls.nested += 1
-                    newconfig = str(loc)
+                    newconfig = loc
                     
             if not newconfig:
                 res = apirdflib.rdfQueryStore(q,cls.myconf)
@@ -1861,12 +1862,9 @@ class SdoConfig():
         if len(res):
             try:
                 for row in list(res):
-                    inc = str(row.inc)
+                    inc = cls.varsub(str(row.inc))
                     #Include files are placed in same location as main config
-                    if os.path.basename(inc) != inc:
-                        log.error("No path allowed in include file names! %s" % inc)
-                        inc = None 
-                    elif os.path.basename(configFile) != configFile:
+                    if os.path.basename(inc) == inc and os.path.basename(configFile) != configFile:
                         inc = os.path.dirname(configFile) + "/" + inc
                     
                     if inc:
