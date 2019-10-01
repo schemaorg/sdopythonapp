@@ -86,7 +86,7 @@ for ver in version_locs:
         SCHEMA_VERSION = versions['schemaversion']
         log.info("schemaversion: %s" % SCHEMA_VERSION)
         releaselog = versions['releaseLog']
-        log.info("releaseLog: %s" % releaselog)
+        #log.info("releaseLog: %s" % releaselog)
         log.info()
         break
     except Exception as e:
