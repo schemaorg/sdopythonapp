@@ -5,8 +5,9 @@ set -u
 ######### sdopythonapp run local script #######
 PWD="`pwd`"
 PROG="`basename $0`"
-
-echo "sdopythonapp utility to run application using local dev_appserver.py"
+INVENTORY="${PWD}/siteinventory.txt"
+PARENTDIR=${PWD} ; export PARENTDIR
+echo "sdopythonapp utility to deploy application gcloud app deploy"
 if [ ! -f $INVENTORY ]
 then
     echo "No 'siteinventory.txt' file here aboorting!"
@@ -42,4 +43,6 @@ fi
 echo ${PROG}: Moving to 'sdopythonapp' directory
 cd sdopythonapp
 
-scripts/appdeploy.sh $@
+deploy/deploy2gcloud.sh
+
+#scripts/appdeploy.sh $@

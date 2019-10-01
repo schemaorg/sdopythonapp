@@ -6,11 +6,13 @@ set -u
 
 PWD=`pwd`
 PROG="`basename $0`"
-if [ `basename $PWD` != "schemaorg" ]
-then
-	echo "Not in the schemaorg directory! Aborting"
-	exit 1
-fi
+echo ${PROG}
+echo
+#if [ `basename $PWD` != "schemaorg" ]
+#then
+#	echo "Not in the schemaorg directory! Aborting"
+#	exit 1
+#fi
 DDIR=deploy
 SDIR=scripts
 if [ ! -d ./$DDIR ]
@@ -124,8 +126,12 @@ done
 echo "Using version '$VERSION'"
 while [ -z "$YAML" ]
 do
-    read -r -p "Yaml file: " response
+    read -r -p "Yaml file [app.yaml]: " response
     YAML="$response"
+    if [ -z "$YAML" ]
+    then
+        YAML="app.yaml"
+    fi
     if [ ! -f "$YAML" ]
     then
         echo "No such file '$YAML'"
@@ -189,16 +195,26 @@ scripts/appdeploy.sh --quiet --no-promote --project "$PROJECT" --version="$VERSI
 echo
 echo "Version '$VERSION' of project '$PROJECT' deployed "
 
-if [ "$EXE" = "Y" ]
+if [ -z "${PARENTDIR}" ] #Use directory of a calling script
 then
-    echo "Starting exercise of site: $URL\n"
-
-    scripts/exercisesite.py --site "$URL"
-    echo
-    echo "Site excercised"
-else
-    echo "Site excercise step skipped"
+    PARENTDIR=$PWD
 fi
+
+(   #Change directory back to calling deployable description
+    cd ${PARENTDIR}
+
+    if [ "$EXE" = "Y" ]
+    then
+        echo "Starting exercise of site: $URL\n"
+
+        scripts/exercisesite.py --site "$URL"
+        echo
+        echo "Site excercised"
+    else
+        echo "Site excercise step skipped"
+    fi
+)
+
 
 if [ "$MIG" = "Y" ]
 then
