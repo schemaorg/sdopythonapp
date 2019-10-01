@@ -52,7 +52,7 @@ from apirdflib import countTypes, countProperties, countEnums, graphFromFiles, g
 from apimarkdown import Markdown
 
 from sdordf2csv import sdordf2csv
-CONFIGFILE = os.environ.get("CONFIGFILE","sdoconfig.json")
+CONFIGFILE = os.environ.get("CONFIGFILE","%s/sdoconfig.json" % os.getcwd())
 SdoConfig.load(CONFIGFILE)
 if not SdoConfig.valid:
     log.error("Invalid config from '%s' or its includes !!" % CONFIGFILE)
