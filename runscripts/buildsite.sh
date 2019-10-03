@@ -83,24 +83,27 @@ then
         exit 1
     fi
     
-#Empty site directory
+    #Empty site directory
     rm -rf sdopythonapp/site/*
     if [ -f handlers.yaml ]
     then
         cp handlers.yaml sdopythonapp/site
     fi
     
-#Create siteconfig.json in site directory with redirect to remote config
-    MATCH='"VOCABDEFLOC": ?".*"'
-    SUB="\"VOCABDEFLOC\": \"${TARGETURL}\""
-    TMP=".tmp.$$"
-    echo -n "s@${MATCH}" > $TMP
-    echo -n "@${SUB}" >> $TMP
-    echo -n "@" >> $TMP
-    sed -E -f $TMP siteconfig.json > sdopythonapp/site/siteconfig.json
-    rm -f $TMP
-    
+else #$REMOTE = "N"
+    TARGETURL="./site"
 fi
+
+#Create siteconfig.json in site directory with redirect to remote/local config
+MATCH='"VOCABDEFLOC": ?".*"'
+SUB="\"VOCABDEFLOC\": \"${TARGETURL}\""
+TMP=".tmp.$$"
+echo -n "s@${MATCH}" > $TMP
+echo -n "@${SUB}" >> $TMP
+echo -n "@" >> $TMP
+sed -E -f $TMP siteconfig.json > sdopythonapp/site/siteconfig.json
+rm -f $TMP
+
 
     
 if [  -x ./runpythonpreprepare.sh ]
