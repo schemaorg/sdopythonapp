@@ -200,16 +200,38 @@ then
     PARENTDIR=$PWD
 fi
 
+
 (   #Change directory back to calling deployable description
     cd ${PARENTDIR}
 
     if [ "$EXE" = "Y" ]
     then
-        echo "Starting exercise of site: $URL\n"
-
-        scripts/exercisesite.py --site "$URL"
         echo
-        echo "Site excercised"
+        echo "Exercise site stage - this takes some time"
+        echo "Recommended for live sites"
+        while true
+        do
+            read -r -p "Exercise site? [Y|N]: " response
+            case $response in
+            y|Y)
+                EX="Y"
+                break
+                ;;
+            n|N)
+                EX="N"
+                break
+                ;;
+            esac
+        done
+        if [ "$EX" = "Y" ]
+        then
+        
+            echo "Starting exercise of site: $URL\n"
+
+            scripts/exercisesite.py --site "$URL"
+            echo
+            echo "Site excercised"
+        fi
     else
         echo "Site excercise step skipped"
     fi
