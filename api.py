@@ -1818,6 +1818,7 @@ class SdoConfig():
             if len(res):
                 for row in res:
                     loc = row.loc
+                    log.info("----- %s -----" % loc)
                     loc = cls.varsub(str(loc))
                     log.info("Found Redirect to config file: %s" % loc)
                     cls.nested += 1
@@ -1882,6 +1883,15 @@ class SdoConfig():
                 pass
                             
     @classmethod
+    def applicationDir(cls):
+        ret = None
+        app = cls.files("application")
+        if app and len(app):
+            ret = app[0].get("location")
+        log.info("Application dir: %s " % ret)
+        return ret
+        
+    @classmethod
     def templateDir(cls):
         ret = None
         temps = cls.files("templates")
@@ -1937,7 +1947,7 @@ class SdoConfig():
         
     @classmethod
     def loadVars(cls):
-        q = """SELECT ?var ?val WHERE {
+        q = """SELECT DISTINCT ?var ?val WHERE {
             ?s scc:dataFeedVar ?o.
             ?o ?var ?val.
             }"""
@@ -1945,7 +1955,6 @@ class SdoConfig():
         cls.varslist = {}
         res = apirdflib.rdfQueryStore(q,cls.myconf)
         for row in res:
-            #log.info(">>> %s ==== %s <<<<<"% (row.var,row.val))
             cls.varslist[os.path.basename(row.var)] = row.val #the var value will come back as a URI
  
     @classmethod
@@ -1958,8 +1967,12 @@ class SdoConfig():
     def varsubReplace(cls,match):
         ret = ""
         var = match.group(1)
-        val = cls.varslist.get(var,None)
+        val = str(cls.varslist.get(var,None))
         if val:
+            if val == ".":
+                val = os.getcwd()
+            elif val == "..":
+                val = os.path.dirname(os.getcwd())
             ret = val
         return ret
         
@@ -2078,12 +2091,6 @@ class SdoConfig():
                 if not d.endswith('/'):
                     d += '/'
                 f = d + f
-            if f and "://" not in f:
-                if f.startswith('./'):
-                    f = f[2:]
-                elif f.startswith('/'):
-                    f = f[1:]
-                f = "file://%s" % full_path(f)
             t = str(row.type)
             t = t.upper()
             e = row.ext

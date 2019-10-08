@@ -52,7 +52,7 @@ from apirdflib import countTypes, countProperties, countEnums, graphFromFiles, g
 from apimarkdown import Markdown
 
 from sdordf2csv import sdordf2csv
-CONFIGFILE = os.environ.get("CONFIGFILE","%s/sdoconfig.json" % os.getcwd())
+CONFIGFILE = os.environ.get("CONFIGFILE","%s/siteconfig.json" % os.getcwd())
 SdoConfig.load(CONFIGFILE)
 if not SdoConfig.valid:
     log.error("Invalid config from '%s' or its includes !!" % CONFIGFILE)
@@ -76,18 +76,23 @@ releaselog = {
             "Unknown": "1970-01-01"
 }
 
-version_locs = ["site/versions.json","versions.json"]
+version_locs = ["%s/versions.json" % SdoConfig.applicationDir(),"versions.json"]
 for ver in version_locs:
-    log.info("Trying %s versions file" % ver)
+    if not "://" in ver:
+        if not ver.startswith("/"):
+            ver = "%s/" % os.getcwd() + ver
+        ver = "file://" + ver
+        
+    log.info("Trying '%s' versions file" % ver)
     try:
-        with open(ver) as json_file:
-            versions = json.load(json_file)
+        json_file = urllib2.urlopen(ver)
+        versions = json.load(json_file)
         log.info("Loaded %s" % ver)
         SCHEMA_VERSION = versions['schemaversion']
         log.info("schemaversion: %s" % SCHEMA_VERSION)
         releaselog = versions['releaseLog']
         #log.info("releaseLog: %s" % releaselog)
-        log.info()
+        
         break
     except Exception as e:
         log.info("%s" % e)
