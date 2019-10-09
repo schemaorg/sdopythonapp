@@ -27,10 +27,9 @@ then
 fi
 
 function usage {
-    echo "usage: $(basename $0) -e -m [-c config] [-p project] [-v version] [-yyaml file]"
+    echo "usage: $(basename $0) -e -m [-p project] [-v version] [-y yaml file]"
 	echo "-e bypasses exercise of site step"
 	echo "-m bypasses migrate traffic to new version step"
-	echo "(If you pass the option -c [webschemas | schemaorg] it answers most of the questions for you)"
 }
 
 PROJECT=""
@@ -39,7 +38,7 @@ YAML=""
 CONF=""
 EXE="Y"
 MIG="Y"
-while getopts 'c:p:v:y:em' OPTION; do
+while getopts 'p:v:y:em' OPTION; do
   case "$OPTION" in
     e)
       EXE="N"
@@ -59,9 +58,6 @@ while getopts 'c:p:v:y:em' OPTION; do
         VERSION="$OPTARG"
     ;;
 
-    c)
-        CONF="$OPTARG"
-    ;;
 
     ?)
         usage
@@ -69,26 +65,6 @@ while getopts 'c:p:v:y:em' OPTION; do
     ;;
   esac
 done
-
-if [ ! -z "$CONF" ]
-then
-    if [ "$CONF" = "schemaorg" ]
-    then
-        PROJECT="schemaorgae"
-        YAML="schemaorg.yaml"
-    elif [ "$CONF" = "webschemas" ]
-    then
-        PROJECT="webschemas-g"
-        YAML="webschemas.yaml"
-    elif [ "$CONF" = "test" ]
-    then
-        PROJECT="sdo-rjwtest"
-        YAML="app.yaml"
-    else
-        echo "Invalid config name '$CONF' - aborting"
-        exit 1
-    fi
-fi
 
 while [ -z "$PROJECT" ]
 do
