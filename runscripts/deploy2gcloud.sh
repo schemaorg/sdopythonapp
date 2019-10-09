@@ -13,13 +13,8 @@ echo
 #	echo "Not in the schemaorg directory! Aborting"
 #	exit 1
 #fi
-DDIR=deploy
-SDIR=scripts
-if [ ! -d ./$DDIR ]
-then
-    echo "No valid $DDIR directory! Aborting"
-	exit 1
-fi
+
+SDIR=runscripts
 if [ ! -d $SDIR ]
 then
     echo "No valid $SDIR directory! Aborting"
@@ -167,7 +162,7 @@ do
 done
 
 
-scripts/appdeploy.sh --quiet --no-promote --project "$PROJECT" --version="$VERSION" "$YAML"
+runscripts/appdeploy.sh --quiet --no-promote --project "$PROJECT" --version="$VERSION" "$YAML"
 echo
 echo "Version '$VERSION' of project '$PROJECT' deployed "
 

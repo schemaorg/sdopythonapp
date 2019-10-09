@@ -10,7 +10,6 @@ MODE="$1"
 
 INVENTORY="${PWD}/siteinventory.txt"
 
-echo "sdopythonapp utility to run application using local dev_appserver.py"
 if [ ! -f $INVENTORY ]
 then
     echo "No 'siteinventory.txt' file here aboorting!"
@@ -34,8 +33,8 @@ then
 fi
 
 echo
-echo "Run application from Local or Remote configuration files"
-if [ "$MODE" = "DEPLOY"]
+echo "Run application from Local or Remote configuration files?"
+if [ "$MODE" = "DEPLOY" ]
 then
     echo "Local: deployed with pythonapp to gcloud"
 else
