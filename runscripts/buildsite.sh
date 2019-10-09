@@ -105,10 +105,10 @@ rm -f $TMP
 
 
     
-if [  -x ./runpythonpreprepare.sh ]
+if [  -x ./scripts/runpythonpreprepare.sh ]
 then
     echo "Running local preprepare script"
-    ./runpythonpreprepare.sh $INVENTORY 
+    ./scripts/runpythonpreprepare.sh $INVENTORY 
 fi
 
 if [  $REMOTE = "N" ]
