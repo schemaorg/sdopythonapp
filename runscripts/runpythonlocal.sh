@@ -28,10 +28,22 @@ fi
 
 sdopythonapp/runscripts/buildsite.sh LOCAL
 
+if [ -f app.yaml ]
+then 
+    echo "Copying app.yaml to local.yaml for running"
+    cp app.yaml sdopythonapp/local.yaml
+fi
+
 echo ${PROG}: Moving to 'sdopythonapp' directory
 cd sdopythonapp
 
-ARGS="--enable_host_checking false --clear_search_indexes yes app.yaml"
+if [ ! -f local.yaml ]
+then
+    echo "No local - copying default app.yaml to local.yaml for running"
+    cp app.yaml local.yaml
+fi
+
+ARGS="--enable_host_checking false --clear_search_indexes yes local.yaml"
 if [ ! -z "$*" ]
 then
     ARGS=$@
