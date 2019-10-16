@@ -2078,7 +2078,7 @@ class ShowUnit (webapp2.RequestHandler):
             log.debug("Serving fresh FullReleasePage.")
             PageStore.put("FullReleasePage.html",page)
             return True
-            
+
     def buildFullReleasePage(self, node, requested_version,layerlist):
         mainroot = TypeHierarchyTree()
         mainroot.traverseForHTML(VTerm.getTerm("Thing"), hashorslash="#term_", layers=layerlist)
@@ -2145,7 +2145,7 @@ class ShowUnit (webapp2.RequestHandler):
                 'menu_sel': "Documentation",
                 'suppressDevnote': True})
         return page
-        
+
     def handleExtensionContents(self,ext):
         if not ext in ENABLED_EXTENSIONS:
             return ""
@@ -2886,7 +2886,7 @@ def templateRender(templateName, node, values=None):
         elif node.isEnumerationValue():
             titletype = "Enumeration value"
         node = node.getId()
-        
+
 
     extName, extDD, extVers, extlinktext, extComment, extDisambiguatingDescription =  getExtenstionDescriptions()
 
