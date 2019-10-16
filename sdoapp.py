@@ -88,7 +88,7 @@ for ver in version_locs:
         json_file = urllib2.urlopen(ver)
         versions = json.load(json_file)
         log.info("Loaded %s" % ver)
-        SCHEMA_VERSION = versions['schemaversion']
+        SCHEMA_VERSION = str(versions['schemaversion'])
         log.info("schemaversion: %s" % SCHEMA_VERSION)
         releaselog = versions['releaseLog']
         #log.info("releaseLog: %s" % releaselog)
