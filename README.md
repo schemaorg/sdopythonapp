@@ -21,7 +21,9 @@ If you are new to Git and GitHub, there's a useful [introduction to Github](http
 Software
 ========
 
-For most collaborators, all you need to know about the software is how to run it. Essentially you will need to have the Python version of Google App Engine SDK running on the platform of your choice. You can then make test builds of schema.org running on your own machine accessible as http://localhost:8080/ or else post them on appspot.com for collaboration. See the [Appengine documentation](https://cloud.google.com/appengine/docs) for details.
+For most collaborators, all you need to know about the software is how to run it. Essentially you will need to have the Python version of Google App Engine SDK running on the platform of your choice. You can then make test builds of schema.org running on your own machine accessible as http://localhost:8080/ or else post them on appspot.com for collaboration. See the [Appengine documentation](https://cloud.google.com/appengine/docs/python/) for details.
+
+Note: This software currently runs under Python 2.7
 
 More information about the software is also available in [SOFTWARE_README.md](SOFTWARE_README.md)
 
