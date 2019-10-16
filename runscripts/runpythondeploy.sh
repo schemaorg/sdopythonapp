@@ -68,8 +68,31 @@ done
 
 sdopythonapp/runscripts/buildsite.sh DEPLOY
 
+DEEFYAM=""
+
+if [ -z "$YAML" ]
+then
+    if [ -f app.yaml ]
+    then 
+        echo "Copying app.yaml to deployed.yaml for deployment"
+        cp app.yaml sdopythonapp/deployed.yaml
+        DEFYAM="-y deployed.yaml"
+    fi
+fi
+
+
 echo ${PROG}: Moving to 'sdopythonapp' directory
 cd sdopythonapp
 
-runscripts/deploy2gcloud.sh $@
+if [ -z "$YAML" ]
+then
+    if [ ! -f deployed.yaml ]
+    then
+        echo "No local app.yaml - copying default app.yaml to deployed.yaml for default deployment"
+        cp app.yaml deployed.yaml
+        DEFYAM="-y deployed.yaml"
+    fi
+fi
+
+runscripts/deploy2gcloud.sh $@ $DEFYAM
 
