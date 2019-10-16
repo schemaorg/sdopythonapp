@@ -1,0 +1,7 @@
+{
+    "@context": {
+        "@vocab": "http://configfiles.schema.org/"
+    },
+    "@type": "ConfigurationRedirect",
+    "configurationLocation": "site/siteconfig.json"
+}

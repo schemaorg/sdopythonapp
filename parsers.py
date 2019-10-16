@@ -70,7 +70,7 @@ class ParseExampleFile :
             file = file[7:]
         
         if "://" in file:
-            content = urllib.urlopen(file).read()
+            content = urllib.urlopen(file).read().decode("utf8")
         else:
             fd = codecs.open(file, 'r', encoding="utf8")
             content = fd.read()

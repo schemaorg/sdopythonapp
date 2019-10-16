@@ -52,13 +52,13 @@ from apirdflib import countTypes, countProperties, countEnums, graphFromFiles, g
 from apimarkdown import Markdown
 
 from sdordf2csv import sdordf2csv
-CONFIGFILE = os.environ.get("CONFIGFILE","sdoconfig.json")
+CONFIGFILE = os.environ.get("CONFIGFILE","%s/siteconfig.json" % os.getcwd())
 SdoConfig.load(CONFIGFILE)
 if not SdoConfig.valid:
     log.error("Invalid config from '%s' or its includes !!" % CONFIGFILE)
     os.exit()
 
-SCHEMA_VERSION="4.0"
+PYTHONAPP_VERSION="2.0"
 
 if not getInTestHarness():
     GAE_APP_ID = app_identity.get_application_id()
@@ -71,21 +71,32 @@ sitemode = "mainsite" # whitespaced list for CSS tags,
             # e.g. "mainsite testsite" when off expected domains
             # "extensionsite" when in an extension (e.g. blue?)
 
-releaselog = {  "2.0": "2015-05-13",
-                "2.1": "2015-08-06",
-                "2.2": "2015-11-05",
-                "3.0": "2016-05-04",
-                "3.1": "2016-08-09",
-                "3.2": "2017-03-23",
-                "3.3": "2017-08-14",
-                "3.4": "2018-06-15",
-                "3.5": "2019-04-01",
-                "3.6": "2019-05-01",
-                "3.7": "2019-06-01",
-                "3.8": "2019-07-01",
-                "3.9": "2019-08-01",
-                "4.0": "2019-10-15" }
+SCHEMA_VERSION="Unknown"
+releaselog = {
+            "Unknown": "1970-01-01"
+}
 
+version_locs = ["%s/versions.json" % SdoConfig.applicationDir(),"versions.json"]
+for ver in version_locs:
+    if not "://" in ver:
+        if not ver.startswith("/"):
+            ver = "%s/" % os.getcwd() + ver
+        ver = "file://" + ver
+        
+    log.info("Trying '%s' versions file" % ver)
+    try:
+        json_file = urllib2.urlopen(ver)
+        versions = json.load(json_file)
+        log.info("Loaded %s" % ver)
+        SCHEMA_VERSION = versions['schemaversion']
+        log.info("schemaversion: %s" % SCHEMA_VERSION)
+        releaselog = versions['releaseLog']
+        #log.info("releaseLog: %s" % releaselog)
+        
+        break
+    except Exception as e:
+        log.info("%s" % e)
+    
 silent_skip_list =  [ "favicon.ico" ] # Do nothing for now
 
 all_layers = {}
@@ -1464,7 +1475,7 @@ class ShowUnit (webapp2.RequestHandler):
         self.emitAcksAndSources(term)
         self.emitTermExamples(term)
 
-        self.write(" <br/>\n\n</div>\n</body>\n<!-- AppEngineVersion %s (%s)-->\n</html>" % (getAppEngineVersion(),appver))
+        self.write(" <br/>\n\n</div>\n</body>\n<!-- AppEngineVersion %s (%s) -->\n<!-- sdopythonapp version: %s -->\n</html>" % (getAppEngineVersion(),appver,PYTHONAPP_VERSION))
 
         page = "".join(self.outputStrings)
         setAppVar(CLOUDEXTRAMETA,{'x-goog-meta-sdotermlayer': term.getLayer()})
@@ -2891,6 +2902,7 @@ def templateRender(templateName, node, values=None):
     defvars = {
         'ENABLE_HOSTED_EXTENSIONS': ENABLE_HOSTED_EXTENSIONS,
         'SCHEMA_VERSION': SCHEMA_VERSION,
+        'PYTHONAPP_VERSION': PYTHONAPP_VERSION,
         'appengineVersion': getAppEngineVersion(),
         'developVersion': DEVELOPVERSION,
         'suppressDevnote': False,
