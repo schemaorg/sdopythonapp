@@ -68,7 +68,7 @@ done
 
 sdopythonapp/runscripts/buildsite.sh DEPLOY
 
-DEEFYAM=""
+DEFYAM=""
 
 if [ -z "$YAML" ]
 then
