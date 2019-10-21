@@ -74,13 +74,17 @@ if [ -z "$YAML" ]
 then
     if [ -f app.yaml ]
     then 
+        echo
         echo "Copying app.yaml to deployed.yaml for deployment"
+        echo
         cp app.yaml sdopythonapp/deployed.yaml
         DEFYAM="-y deployed.yaml"
     fi
 elif [ -f "$YAML" ]
 then
+    echo
     echo "Copying $YAML to deployed.yaml for deployment"
+    echo
     cp $YAML sdopythonapp/deployed.yaml
     DEFYAM="-y deployed.yaml"
 else
