@@ -78,6 +78,8 @@ then
         cp app.yaml sdopythonapp/deployed.yaml
         DEFYAM="-y deployed.yaml"
     fi
+else
+    cp $YAML sdopythonapp
 fi
 
 
