@@ -80,6 +80,7 @@ then
     fi
 elif [ -f "$YAML" ]
 then
+    echo "Copying $YAML to deployed.yaml for deployment"
     cp $YAML sdopythonapp/deployed.yaml
     DEFYAM="-y deployed.yaml"
 else
