@@ -78,8 +78,13 @@ then
         cp app.yaml sdopythonapp/deployed.yaml
         DEFYAM="-y deployed.yaml"
     fi
+elif [ -f "$YAML" ]
+then
+    cp $YAML sdopythonapp/deployed.yaml
+    DEFYAM="-y deployed.yaml"
 else
-    cp $YAML sdopythonapp
+    echo "No such yaml file: $YAML"
+    exit 1
 fi
 
 
