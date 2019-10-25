@@ -58,7 +58,7 @@ if not SdoConfig.valid:
     log.error("Invalid config from '%s' or its includes !!" % CONFIGFILE)
     os.exit()
 
-PYTHONAPP_VERSION="2.0"
+PYTHONAPP_VERSION="2.0.1"
 
 if not getInTestHarness():
     GAE_APP_ID = app_identity.get_application_id()
