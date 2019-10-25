@@ -32,7 +32,7 @@ ALTVOCAB = "https://schema.org"
 STORE = rdflib.Dataset()
 #Namespace mapping#############
 EXTERNALNAMESPACES = {
-            'xsd':      'hhttp://www.w3.org/2001/XMLSchema#',
+            'xsd':      'http://www.w3.org/2001/XMLSchema#',
             'skos':     'http://www.w3.org/2004/02/skos/core#',
             'owl':      'http://www.w3.org/2002/07/owl#',
             'rdfa':     'http://www.w3.org/ns/rdfa#',
