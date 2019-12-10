@@ -1597,7 +1597,8 @@ class ShowUnit (webapp2.RequestHandler):
 
     def emitHTTPHeaders(self, node):
         if ENABLE_CORS:
-            self.response.headers.add_header("Access-Control-Allow-Origin", "*") # entire site is public.
+            origin = self.request.headers.get('Origin', "*")
+            self.response.headers.add_header("Access-Control-Allow-Origin", origin) # entire site is public.
             # see http://en.wikipedia.org/wiki/Cross-origin_resource_sharing
 
     def setupExtensionLayerlist(self, node):
@@ -2363,11 +2364,17 @@ class ShowUnit (webapp2.RequestHandler):
             self.response = webapp2.redirect(uri, True, 301)
         return False
 
+    def options(self,node):  #Services httpd OPTIONS request
+        log.info("OPTONS request for node '%s' from origin: '%s'" % (node,self.request.headers.get('Origin')))
+        origin = self.request.headers.get('Origin', "*")
+        self.response.headers.add_header("Access-Control-Allow-Origin", origin) # entire site is public.
+        self.response.headers.add_header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS") # 
+        self.response.set_status(204,"No Content")
+        log.info("Responding:\n%s\nstatus: %s\n%s" % (node,self.response.status,self.response.headers ))
 
-    def head(self, node):
 
+    def head(self, node):  #Services httpd HEAD request
         self.get(node) #Get the page
-
         #Clear the request & payload and only put the headers and status back
         hdrs = self.response.headers.copy()
         stat = self.response.status
@@ -2376,11 +2383,12 @@ class ShowUnit (webapp2.RequestHandler):
         self.response.status = stat
         return
 
-    def get(self, node):
+
+    def get(self, node):    #Services httpd GET request
         if not self.setupHostinfo(node):
             return
         log.info("NODE: '%s'" % node)
-
+        
         if not node or node == "":
             node = "/"
 
