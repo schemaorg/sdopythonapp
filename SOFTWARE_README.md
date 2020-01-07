@@ -5,7 +5,7 @@ Schema.org Software
 This document describes the software that underpins schema.org. Most collaborators will only need to be able to run 
 it. At this time we do not solicit active collaboration on the codebase itself from the general public.
 
-* see https://github.com/schemaorg/schemaorg/blob/sdo-phobos/LICENSE for opensource license info (Apache2)
+* see https://github.com/schemaorg/schemaorg/blob/sdo-phobos/LICENSE for open-source license info (Apache2)
 
 Software 
 ========
@@ -34,7 +34,7 @@ External Software
 =================
 
 In addition to AppEngine and Python itself, this repository
-contains copies of the following opensource libraries in the 
+contains copies of the following open-source libraries in the 
 lib/ directory tree.
 
 1.) html5lib/
