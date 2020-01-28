@@ -2369,6 +2369,8 @@ class ShowUnit (webapp2.RequestHandler):
         origin = self.request.headers.get('Origin', "*")
         self.response.headers.add_header("Access-Control-Allow-Origin", origin) # entire site is public.
         self.response.headers.add_header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS") # 
+        self.response.headers.add_header("Access-Control-Allow-Headers", "Accept") # 
+        self.response.headers.add_header("Access-Control-Allow-Credentials", "true") # 
         self.response.set_status(204,"No Content")
         log.info("Responding:\n%s\nstatus: %s\n%s" % (node,self.response.status,self.response.headers ))
 
