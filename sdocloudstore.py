@@ -110,7 +110,7 @@ class SdoCloudStore():
         return filename
         
     def buildBucketFile(self,filename,ftype,location):
-        #log.info("buildBucketFile( %s %s %s )" % (filename,ftype,location))
+        log.info("buildBucketFile( %s %s %s )" % (filename,ftype,location))
         
         filename = self.buildNameType(filename,ftype)
         
@@ -122,24 +122,27 @@ class SdoCloudStore():
         else:
             bucketFile = filename
 
-        mimetype, contentType = mimetypes.guess_type(bucketFile)
         
-        if not mimetype:
-            if ftype == "html":
-                mimetype = "text/html; charset=utf-8"
-            elif ftype == "jsonld" or ftype == "json-ld" :
-                mimetype = "application/ld+json; charset=utf-8"
-            elif ftype == "json":
-                mimetype = "application/json; charset=utf-8"
-            elif ftype == "ttl":
-                mimetype = "application/x-turtle; charset=utf-8"
-            elif ftype == "rdf" or ftype == "xml":
-                mimetype = "application/rdf+xml; charset=utf-8"
-            elif ftype == "nt":
-                mimetype = "text/plain"
-            elif ftype == "txt":
-                mimetype = "text/plain"
+        mimetype = None
+        
+        if ftype == "html":
+            mimetype = "text/html; charset=utf-8"
+        elif ftype == "jsonld" or ftype == "json-ld" :
+            mimetype = "application/ld+json; charset=utf-8"
+        elif ftype == "json":
+            mimetype = "application/json; charset=utf-8"
+        elif ftype == "ttl":
+            mimetype = "application/x-turtle; charset=utf-8"
+        elif ftype == "rdf" or ftype == "xml":
+            mimetype = "application/rdf+xml; charset=utf-8"
+        elif ftype == "nt":
+            mimetype = "text/plain"
+        elif ftype == "txt":
+            mimetype = "text/plain"
                 
+        if not mimetype:
+            mimetype, contentType = mimetypes.guess_type(bucketFile)
+            log.info("Guessed mimetype %s contenttype %s" % (mimetype,contentType))
         #log.info("buildBucketFile: %s '%s' (%s)" % (bucketFile,mimetype,contentType))
 
         return bucketFile, mimetype

@@ -1599,6 +1599,8 @@ class ShowUnit (webapp2.RequestHandler):
         if ENABLE_CORS:
             origin = self.request.headers.get('Origin', "*")
             self.response.headers.add_header("Access-Control-Allow-Origin", origin) # entire site is public.
+            self.response.headers.add_header("Access-Control-Allow-Headers", "Accept") # 
+            self.response.headers.add_header("Access-Control-Allow-Credentials", "true") # 
             # see http://en.wikipedia.org/wiki/Cross-origin_resource_sharing
 
     def setupExtensionLayerlist(self, node):
@@ -2398,12 +2400,17 @@ class ShowUnit (webapp2.RequestHandler):
             log.warning("Invalid node name '%s'" % str(node))
             self.handle404Failure(node,suggest=False)
             return
-
+        
         NotModified = False
         matchTag = self.request.headers.get("If-None-Match",None)
         unMod = self.request.headers.get("If-Unmodified-Since",None)
 
         #log.info("matchTag '%s' unMod '%s'" % (matchTag,unMod))
+        #b = StringIO.StringIO()
+        #for h in sorted(self.request.headers):
+        #    b.write("\n    %s   %s" % (h,self.request.headers.get(h)))
+        #log.info("Request Headers:%s" % b.getvalue())
+        #b.close()
 
         hdrIndex = getHostExt()
         if len(hdrIndex):
