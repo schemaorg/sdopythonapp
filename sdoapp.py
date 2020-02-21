@@ -1266,22 +1266,38 @@ class ShowUnit (webapp2.RequestHandler):
 
         # Homepage is content-negotiated. HTML or JSON-LD.
         mimereq = {}
+        ahlist = []
         for ah in accept_header:
-            ah = re.sub( r";q=\d?\.\d+", '', ah).rstrip()
-            mimereq[ah] = 1
-
-        html_score = mimereq.get('text/html', 5)
-        xhtml_score = mimereq.get('application/xhtml+xml', 5)
-        jsonld_score = mimereq.get('application/ld+json', 10)
-        json_score = mimereq.get('application/json', 10)
-        log.info( "accept_header: " + str(accept_header) + " mimereq: "+str(mimereq) + "Scores H:{0} XH:{1} JL:{2} J:{3}".format(html_score,xhtml_score,jsonld_score,json_score))
-
-        if (ENABLE_JSONLD_CONTEXT and ((jsonld_score < html_score and jsonld_score < xhtml_score) or (json_score < html_score and json_score < xhtml_score))):
-            self.response.set_status(302,"Found")
-            if jsonld_score < json_score:
-                self.response.headers['Location'] = makeUrl("","docs/jsonldcontext.jsonld")
+            match = re.search(r";q=(\d?\.\d+)", ah)
+            if not match:
+                q = float(1)
             else:
-                self.response.headers['Location'] = makeUrl("","docs/jsonldcontext.json")
+                q = float(match.group(1))
+            ah = re.sub( r";q=\d?\.\d+", '', ah).strip()
+            mimereq[ah] = 1
+            ahlist.append((ah,q))
+        
+        jsonreq=False
+        for ahe in sorted(ahlist, key=lambda x: x[1], reverse=True):
+            reqmime = ahe[0]
+            if ENABLE_JSONLD_CONTEXT:
+                if reqmime.startswith("application/ld+json"):
+                    log.info("Reacting to Accept request for '%s'" % reqmime)
+                    jsonreq=True
+                    self.response.headers['Location'] = makeUrl("","docs/jsonldcontext.jsonld")
+                    break
+                if reqmime.startswith("application/json"):
+                    log.info("Reacting to Accept request for '%s'" % reqmime)
+                    jsonreq=True
+                    self.response.headers['Location'] = makeUrl("","docs/jsonldcontext.json")
+                    break
+            if reqmime.startswith("text/html") or reqmime.startswith("application/xhtml+xml"):
+                log.info("Reacting to Accept request for '%s'" % reqmime)
+                break
+                
+
+        if jsonreq:
+            self.response.set_status(302,"Found")
             self.emitCacheHeaders()
             return False #don't cache this redirect
         else:
@@ -1718,15 +1734,15 @@ class ShowUnit (webapp2.RequestHandler):
 
     def getCounts(self):
         log.info("counts")
-        typesCount = str(countTypes(extension="core"))
+        typesCount = str(countTypes())
         log.info("TYPES %s" % typesCount)
-        propsCount = str(countProperties(extension="core"))
+        propsCount = str(countProperties())
         log.info("PROPS %s" % propsCount)
-        enumCount = str(countEnums(extension="core"))
+        enumCount = str(countEnums())
         log.info("ENUMS %s" % enumCount)
 
         text = ""
-        text += "The core vocabulary currently consists of %s Types, " % typesCount
+        text += "The vocabulary currently consists of %s Types, " % typesCount
         text += " %s Properties, " % propsCount
         text += "and %s Enumeration values." % enumCount
         return text
