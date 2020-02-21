@@ -1433,6 +1433,8 @@ def load_examples_data(extensions):
             memcache.set("ExmplesLoaded",value=True)
     else:
         load_local_examples_data(extensions)
+    
+    log.info("Terms with examples %s" % len(EXAMPLESMAP))
         
 def load_example_sources(files):
     if files:
