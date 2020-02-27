@@ -6,7 +6,7 @@ set -u
 PWD="`pwd`"
 PROG="`basename $0`"
 
-MODE="$1"
+export MODE="$1"
 
 INVENTORY="${PWD}/siteinventory.txt"
 
