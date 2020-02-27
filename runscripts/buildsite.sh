@@ -41,9 +41,10 @@ else
     echo "Local: in this directory"
 fi
 echo "Remote: from remote URL eg. https://raw.githubusercontent.com/... "
+DEFREMOTE="L"
 while true
 do
-    read -r -p "Local or Remote? [L|R]: " response
+    read -r -p "Local or Remote? L/R [$DEFREMOTE]: " response
     LR="$response"
     case $LR in
     l|L)
@@ -53,6 +54,13 @@ do
     r|R)
         REMOTE="Y"
         break
+        ;;
+    "")
+        if [ ! -z "$DEFREMOTE" ]
+        then
+            REMOTE="$DEFREMOTE"
+            break
+        fi
         ;;
     esac
 done
