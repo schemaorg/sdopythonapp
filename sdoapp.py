@@ -7,6 +7,7 @@ logging.basicConfig(level=logging.INFO) # dev_appserver.py --log_level debug .
 log = logging.getLogger(__name__)
 
 import os
+import sys
 import re
 import webapp2
 import urllib2
@@ -56,7 +57,7 @@ CONFIGFILE = os.environ.get("CONFIGFILE","%s/siteconfig.json" % os.getcwd())
 SdoConfig.load(CONFIGFILE)
 if not SdoConfig.valid:
     log.error("Invalid config from '%s' or its includes !!" % CONFIGFILE)
-    os.exit()
+    sys.exit()
 
 PYTHONAPP_VERSION="2.0.1"
 
