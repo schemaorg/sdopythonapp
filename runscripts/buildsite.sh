@@ -58,10 +58,14 @@ do
     "")
         if [ ! -z "$DEFREMOTE" ]
         then
-            REMOTE="$DEFREMOTE"
+            if [ "$DEFREMOTE" = "L" ]
+            then
+                REMOTE="N"
+            else
+                REMOTE="Y"
+            fi
             break
-        fi
-        ;;
+        fi        ;;
     esac
 done
 
