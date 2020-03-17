@@ -120,7 +120,9 @@ rm -f $TMP
 if [  -x ./scripts/runpythonpreprepare.sh ]
 then
     echo "Running local preprepare script"
-    ./scripts/runpythonpreprepare.sh $INVENTORY 
+    ./scripts/runpythonpreprepare.sh $INVENTORY
+else
+    echo "No local preprepare script (scripts/runpythonpreprepare.sh) to run" 
 fi
 
 if [  $REMOTE = "N" ]
@@ -134,8 +136,11 @@ then
     done
 fi
 
-if [  -x ./runpythonpostprepare.sh ]
+if [  -x ./scripts/runpythonpostprepare.sh ]
 then
     echo "Running local postprepare script"
-    ./runpythonpostprepare.sh $INVENTORY 
+    ./scripts/runpythonpostprepare.sh $INVENTORY 
+else
+    echo "No local postprepare script (scripts/runpythonpostprepare.sh) to run" 
 fi
+
