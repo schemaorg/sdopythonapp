@@ -45,6 +45,7 @@ from rdflib.graph import Graph
 from rdflib.term import URIRef, Literal, BNode
 from rdflib.namespace import RDF, XSD
 
+from ._compat import unicode
 from .context import Context, UNDEF
 from .util import json
 from .keys import CONTEXT, GRAPH, ID, VOCAB, LIST, SET, LANG
@@ -67,9 +68,9 @@ class JsonLDSerializer(Serializer):
                           "Given encoding was: %s" % encoding)
 
         context_data = kwargs.get('context')
-        use_native_types = kwargs.get('use_native_types', True),
+        use_native_types = kwargs.get('use_native_types', False),
         use_rdf_type = kwargs.get('use_rdf_type', False)
-        auto_compact = kwargs.get('auto_compact', True)
+        auto_compact = kwargs.get('auto_compact', False)
 
         indent = kwargs.get('indent', 2)
         separators = kwargs.get('separators', (',', ': '))
@@ -180,7 +181,7 @@ class Converter(object):
                     and not any(graph.subjects(None, s))):
                 self.process_subject(graph, s, nodemap)
 
-        return nodemap.values()
+        return list(nodemap.values())
 
     def process_subject(self, graph, s, nodemap):
         if isinstance(s, URIRef):

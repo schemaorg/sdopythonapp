@@ -1,23 +1,21 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import os
+import itertools
 import shutil
 import tempfile
 import warnings
 import types
 
-from urlparse import urlparse
-try:
-    from io import BytesIO
-    assert BytesIO
-except:
-    from StringIO import StringIO as BytesIO
-
-from . import py3compat
+from six import BytesIO
+from six import PY2
+from six import text_type
+from six.moves.urllib.parse import urlparse
 
 __all__ = ['Processor', 'Result', 'ResultParser', 'ResultSerializer',
            'ResultException']
-
-
 
 
 class Processor(object):
@@ -36,6 +34,7 @@ class Processor(object):
     def query(self, strOrQuery, initBindings={}, initNs={}, DEBUG=False):
         pass
 
+
 class UpdateProcessor(object):
     """
     Update plugin interface.
@@ -51,8 +50,10 @@ class UpdateProcessor(object):
 
     def __init__(self, graph):
         pass
+
     def update(self, strOrQuery, initBindings={}, initNs={}):
         pass
+
 
 class ResultException(Exception):
     pass
@@ -70,7 +71,7 @@ class EncodeOnlyUnicode(object):
         self.__stream = stream
 
     def write(self, arg):
-        if isinstance(arg, unicode):
+        if isinstance(arg, text_type):
             self.__stream.write(arg.encode("utf-8"))
         else:
             self.__stream.write(arg)
@@ -88,39 +89,38 @@ class ResultRow(tuple):
     >>> rr=ResultRow({ Variable('a'): URIRef('urn:cake') }, [Variable('a')])
 
     >>> rr[0]
-    rdflib.term.URIRef(%(u)s'urn:cake')
+    rdflib.term.URIRef(u'urn:cake')
     >>> rr[1]
     Traceback (most recent call last):
         ...
     IndexError: tuple index out of range
 
     >>> rr.a
-    rdflib.term.URIRef(%(u)s'urn:cake')
+    rdflib.term.URIRef(u'urn:cake')
     >>> rr.b
     Traceback (most recent call last):
         ...
     AttributeError: b
 
     >>> rr['a']
-    rdflib.term.URIRef(%(u)s'urn:cake')
+    rdflib.term.URIRef(u'urn:cake')
     >>> rr['b']
     Traceback (most recent call last):
         ...
     KeyError: 'b'
 
     >>> rr[Variable('a')]
-    rdflib.term.URIRef(%(u)s'urn:cake')
+    rdflib.term.URIRef(u'urn:cake')
 
     .. versionadded:: 4.0
 
     """
-    __doc__ = py3compat.format_doctest_out(__doc__)
 
     def __new__(cls, values, labels):
 
         instance = super(ResultRow, cls).__new__(
             cls, (values.get(v) for v in labels))
-        instance.labels = dict((unicode(x[1]), x[0])
+        instance.labels = dict((text_type(x[1]), x[0])
                                for x in enumerate(labels))
         return instance
 
@@ -135,12 +135,18 @@ class ResultRow(tuple):
         except TypeError:
             if name in self.labels:
                 return tuple.__getitem__(self, self.labels[name])
-            if unicode(name) in self.labels:  # passing in variable object
-                return tuple.__getitem__(self, self.labels[unicode(name)])
+            if text_type(name) in self.labels:  # passing in variable object
+                return tuple.__getitem__(self, self.labels[text_type(name)])
             raise KeyError(name)
 
+    def get(self, name, default=None):
+        try:
+            return self[name]
+        except KeyError:
+            return default
+
     def asdict(self):
-        return dict((v, self[v]) for v in self.labels if self[v] != None)
+        return dict((v, self[v]) for v in self.labels if self[v] is not None)
 
 
 class Result(object):
@@ -150,7 +156,7 @@ class Result(object):
     There is a bit of magic here that makes this appear like different
     Python objects, depending on the type of result.
 
-    If the type is "SELECT", iterating will yield lists of QueryRow objects
+    If the type is "SELECT", iterating will yield lists of ResultRow objects
 
     If the type is "ASK", iterating will yield a single bool (or
     bool(result) will return the same bool)
@@ -161,6 +167,7 @@ class Result(object):
     len(result) also works.
 
     """
+
     def __init__(self, type_):
 
         if type_ not in ('CONSTRUCT', 'DESCRIBE', 'SELECT', 'ASK'):
@@ -181,7 +188,7 @@ class Result(object):
         return self._bindings
 
     def _set_bindings(self, b):
-        if isinstance(b, types.GeneratorType):
+        if isinstance(b, (types.GeneratorType, itertools.islice)):
             self._genbindings = b
             self._bindings = []
         else:
@@ -191,10 +198,19 @@ class Result(object):
         _get_bindings, _set_bindings, doc="a list of variable bindings as dicts")
 
     @staticmethod
-    def parse(source, format='xml', **kwargs):
+    def parse(source=None, format=None, content_type=None, **kwargs):
         from rdflib import plugin
-        parser = plugin.get(format, ResultParser)()
-        return parser.parse(source, **kwargs)
+
+        if format:
+            plugin_key = format
+        elif content_type:
+            plugin_key = content_type.split(";", 1)[0]
+        else:
+            plugin_key = 'xml'
+
+        parser = plugin.get(plugin_key, ResultParser)()
+
+        return parser.parse(source, content_type=content_type, **kwargs)
 
     def serialize(
             self, destination=None, encoding="utf-8", format='xml', **args):
@@ -239,11 +255,14 @@ class Result(object):
         else:
             return len(self.graph)
 
-    def __nonzero__(self):
+    def __bool__(self):
         if self.type == 'ASK':
             return self.askAnswer
         else:
-            return len(self)>0
+            return len(self) > 0
+
+    if PY2:
+        __nonzero__ = __bool__
 
     def __iter__(self):
         if self.type in ("CONSTRUCT", "DESCRIBE"):
@@ -256,12 +275,14 @@ class Result(object):
 
             if self._genbindings:
                 for b in self._genbindings:
-                    self._bindings.append(b)
-                    yield ResultRow(b, self.vars)
+                    if b:  # don't add a result row in case of empty binding {}
+                        self._bindings.append(b)
+                        yield ResultRow(b, self.vars)
                 self._genbindings = None
             else:
                 for b in self._bindings:
-                    yield ResultRow(b, self.vars)
+                    if b:  # don't add a result row in case of empty binding {}
+                        yield ResultRow(b, self.vars)
 
     def __getattr__(self, name):
         if self.type in ("CONSTRUCT", "DESCRIBE") and self.graph is not None:

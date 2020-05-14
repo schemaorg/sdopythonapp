@@ -9,7 +9,7 @@ XSD_DTs = set(
      XSD.boolean, XSD.dateTime, XSD.nonPositiveInteger, XSD.negativeInteger,
      XSD.long, XSD.int, XSD.short, XSD.byte, XSD.nonNegativeInteger,
      XSD.unsignedLong, XSD.unsignedInt, XSD.unsignedShort, XSD.unsignedByte,
-     XSD.positiveInteger))
+     XSD.positiveInteger, XSD.date))
 
 _sub_types = {
     XSD.integer: [
@@ -44,7 +44,7 @@ _typePromotionMap = {
 
 
 def type_promotion(t1, t2):
-    if t2 == None:
+    if t2 is None:
         return t1
     t1 = _super_types.get(t1, t1)
     t2 = _super_types.get(t2, t2)

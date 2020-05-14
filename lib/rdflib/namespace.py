@@ -1,6 +1,22 @@
-from rdflib.py3compat import format_doctest_out
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
-__doc__ = format_doctest_out("""
+import logging
+
+import os
+from unicodedata import category
+
+from six import string_types
+from six import text_type
+
+from six.moves.urllib.request import pathname2url
+from six.moves.urllib.parse import urldefrag
+from six.moves.urllib.parse import urljoin
+
+from rdflib.term import URIRef, Variable, _XSD_PFX, _is_valid_uri
+
+__doc__ = """
 ===================
 Namespace Utilities
 ===================
@@ -21,9 +37,9 @@ or by dictionary access on Namespace instances:
 .. code-block:: pycon
 
     >>> owl.seeAlso
-    rdflib.term.URIRef(%(u)s'http://www.w3.org/2002/07/owl#seeAlso')
+    rdflib.term.URIRef(u'http://www.w3.org/2002/07/owl#seeAlso')
     >>> owl['seeAlso']
-    rdflib.term.URIRef(%(u)s'http://www.w3.org/2002/07/owl#seeAlso')
+    rdflib.term.URIRef(u'http://www.w3.org/2002/07/owl#seeAlso')
 
 
 Automatic handling of unknown predicates
@@ -52,19 +68,9 @@ The following namespaces are available by directly importing from rdflib:
 
     >>> from rdflib import OWL
     >>> OWL.seeAlso
-    rdflib.term.URIRef(%(u)s'http://www.w3.org/2002/07/owl#seeAlso')
+    rdflib.term.URIRef(u'http://www.w3.org/2002/07/owl#seeAlso')
 
-""")
-
-import logging
-logger = logging.getLogger(__name__)
-
-import os
-
-from urlparse import urljoin, urldefrag
-from urllib import pathname2url
-
-from rdflib.term import URIRef, Variable, _XSD_PFX, _is_valid_uri
+"""
 
 __all__ = [
     'is_ncname', 'split_uri', 'Namespace',
@@ -72,29 +78,29 @@ __all__ = [
     'XMLNS', 'RDF', 'RDFS', 'XSD', 'OWL',
     'SKOS', 'DOAP', 'FOAF', 'DC', 'DCTERMS', 'VOID']
 
+logger = logging.getLogger(__name__)
 
-class Namespace(unicode):
 
-    __doc__ = format_doctest_out("""
+class Namespace(text_type):
+
+    __doc__ = """
     Utility class for quickly generating URIRefs with a common prefix
 
     >>> from rdflib import Namespace
     >>> n = Namespace("http://example.org/")
     >>> n.Person # as attribute
-    rdflib.term.URIRef(%(u)s'http://example.org/Person')
+    rdflib.term.URIRef(u'http://example.org/Person')
     >>> n['first-name'] # as item - for things that are not valid python identifiers
-    rdflib.term.URIRef(%(u)s'http://example.org/first-name')
+    rdflib.term.URIRef(u'http://example.org/first-name')
 
-    """)
-
+    """
 
     def __new__(cls, value):
         try:
-            rt = unicode.__new__(cls, value)
+            rt = text_type.__new__(cls, value)
         except UnicodeDecodeError:
-            rt = unicode.__new__(cls, value, 'utf-8')
+            rt = text_type.__new__(cls, value, 'utf-8')
         return rt
-
 
     @property
     def title(self):
@@ -102,7 +108,7 @@ class Namespace(unicode):
 
     def term(self, name):
         # need to handle slices explicitly because of __getitem__ override
-        return URIRef(self + (name if isinstance(name, basestring) else ''))
+        return URIRef(self + (name if isinstance(name, string_types) else ''))
 
     def __getitem__(self, key, default=None):
         return self.term(key)
@@ -114,38 +120,37 @@ class Namespace(unicode):
             return self.term(name)
 
     def __repr__(self):
-        return "Namespace(%s)"%unicode.__repr__(self)
+        return "Namespace(%r)" % text_type(self)
 
 
-class URIPattern(unicode):
+class URIPattern(text_type):
 
-    __doc__ = format_doctest_out("""
+    __doc__ = """
     Utility class for creating URIs according to some pattern
     This supports either new style formatting with .format
-    or old-style with %% operator
+    or old-style with % operator
 
-    >>> u=URIPattern("http://example.org/%%s/%%d/resource")
-    >>> u%%('books', 12345)
-    rdflib.term.URIRef(%(u)s'http://example.org/books/12345/resource')
+    >>> u=URIPattern("http://example.org/%s/%d/resource")
+    >>> u%('books', 12345)
+    rdflib.term.URIRef(u'http://example.org/books/12345/resource')
 
-    """)
+    """
 
     def __new__(cls, value):
         try:
-            rt = unicode.__new__(cls, value)
+            rt = text_type.__new__(cls, value)
         except UnicodeDecodeError:
-            rt = unicode.__new__(cls, value, 'utf-8')
+            rt = text_type.__new__(cls, value, 'utf-8')
         return rt
 
     def __mod__(self, *args, **kwargs):
-        return URIRef(unicode(self).__mod__(*args, **kwargs))
+        return URIRef(text_type(self).__mod__(*args, **kwargs))
 
     def format(self, *args, **kwargs):
-        return URIRef(unicode.format(self, *args, **kwargs))
+        return URIRef(text_type.format(self, *args, **kwargs))
 
     def __repr__(self):
-        return "URIPattern(%r)"%unicode.__repr__(self)
-
+        return "URIPattern(%r)" % text_type(self)
 
 
 class ClosedNamespace(object):
@@ -164,8 +169,9 @@ class ClosedNamespace(object):
     def term(self, name):
         uri = self.__uris.get(name)
         if uri is None:
-            raise Exception(
-                "term '%s' not in namespace '%s'" % (name, self.uri))
+            raise KeyError(
+                "term '{}' not in namespace '{}'".format(name, self.uri)
+            )
         else:
             return uri
 
@@ -176,19 +182,23 @@ class ClosedNamespace(object):
         if name.startswith("__"):  # ignore any special Python names!
             raise AttributeError
         else:
-            return self.term(name)
+            try:
+                return self.term(name)
+            except KeyError as e:
+                raise AttributeError(e)
 
     def __str__(self):
-        return str(self.uri)
+        return text_type(self.uri)
 
     def __repr__(self):
-        return """rdf.namespace.ClosedNamespace('%s')""" % str(self.uri)
+        return "rdf.namespace.ClosedNamespace(%r)" % text_type(self.uri)
 
 
 class _RDFNamespace(ClosedNamespace):
     """
     Closed namespace for RDF terms
     """
+
     def __init__(self):
         super(_RDFNamespace, self).__init__(
             URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
@@ -210,17 +220,28 @@ class _RDFNamespace(ClosedNamespace):
                 "nil",
 
                 # Added in RDF 1.1
-                "XMLLiteral", "HTML", "langString"]
+                "XMLLiteral", "HTML", "langString",
+            
+                # Added in JSON-LD 1.1
+                "JSON", "CompoundLiteral", "language", "direction"]
         )
 
     def term(self, name):
-        try:
-            i = int(name)
-            return URIRef("%s_%s" % (self.uri, i))
-        except ValueError:
-            return super(_RDFNamespace, self).term(name)
+        # Container membership properties
+        if name.startswith('_'):
+            try:
+                i = int(name[1:])
+            except ValueError:
+                pass
+            else:
+                if i > 0:
+                    return URIRef("%s_%s" % (self.uri, i))
+
+        return super(_RDFNamespace, self).term(name)
+
 
 RDF = _RDFNamespace()
+
 
 RDFS = ClosedNamespace(
     uri=URIRef("http://www.w3.org/2000/01/rdf-schema#"),
@@ -234,13 +255,70 @@ OWL = Namespace('http://www.w3.org/2002/07/owl#')
 
 XSD = Namespace(_XSD_PFX)
 
-SKOS = Namespace('http://www.w3.org/2004/02/skos/core#')
-DOAP = Namespace('http://usefulinc.com/ns/doap#')
-FOAF = Namespace('http://xmlns.com/foaf/0.1/')
+CSVW = Namespace('http://www.w3.org/ns/csvw#')
 DC = Namespace('http://purl.org/dc/elements/1.1/')
+DCAT = Namespace('http://www.w3.org/ns/dcat#')
 DCTERMS = Namespace('http://purl.org/dc/terms/')
+DOAP = Namespace('http://usefulinc.com/ns/doap#')
+FOAF = ClosedNamespace(
+    uri=URIRef('http://xmlns.com/foaf/0.1/'),
+    terms=[
+        # all taken from http://xmlns.com/foaf/spec/
+        'Agent', 'Person', 'name', 'title', 'img',
+        'depiction', 'depicts', 'familyName',
+        'givenName', 'knows', 'based_near', 'age', 'made',
+        'maker', 'primaryTopic', 'primaryTopicOf', 'Project', 'Organization',
+        'Group', 'member', 'Document', 'Image', 'nick',
+        'mbox', 'homepage', 'weblog', 'openid', 'jabberID',
+        'mbox_sha1sum', 'interest', 'topic_interest', 'topic', 'page',
+        'workplaceHomepage', 'workInfoHomepage', 'schoolHomepage', 'publications', 'currentProject',
+        'pastProject', 'account', 'OnlineAccount', 'accountName', 'accountServiceHomepage',
+        'PersonalProfileDocument', 'tipjar', 'sha1', 'thumbnail', 'logo'
+    ]
+)
+ODRL2 = Namespace('http://www.w3.org/ns/odrl/2/')
+ORG = Namespace('http://www.w3.org/ns/org#')
+PROV = ClosedNamespace(
+    uri=URIRef('http://www.w3.org/ns/prov#'),
+    terms=[
+        'Entity', 'Activity', 'Agent', 'wasGeneratedBy', 'wasDerivedFrom',
+        'wasAttributedTo', 'startedAtTime', 'used', 'wasInformedBy', 'endedAtTime',
+        'wasAssociatedWith', 'actedOnBehalfOf', 'Collection', 'EmptyCollection', 'Bundle',
+        'Person', 'SoftwareAgent', 'Organization', 'Location', 'alternateOf',
+        'specializationOf', 'generatedAtTime', 'hadPrimarySource', 'value', 'wasQuotedFrom',
+        'wasRevisionOf', 'invalidatedAtTime', 'wasInvalidatedBy', 'hadMember', 'wasStartedBy',
+        'wasEndedBy', 'invalidated', 'influenced', 'atLocation', 'generated',
+        'Influence', 'EntityInfluence', 'Usage', 'Start', 'End',
+        'Derivation', 'PrimarySource', 'Quotation', 'Revision', 'ActivityInfluence',
+        'Generation', 'Communication', 'Invalidation', 'AgentInfluence',
+        'Attribution', 'Association', 'Plan', 'Delegation', 'InstantaneousEvent',
+        'Role', 'wasInfluencedBy', 'qualifiedInfluence', 'qualifiedGeneration', 'qualifiedDerivation',
+        'qualifiedPrimarySource', 'qualifiedQuotation', 'qualifiedRevision', 'qualifiedAttribution',
+        'qualifiedInvalidation', 'qualifiedStart', 'qualifiedUsage', 'qualifiedCommunication', 'qualifiedAssociation',
+        'qualifiedEnd', 'qualifiedDelegation', 'influencer', 'entity', 'hadUsage', 'hadGeneration',
+        'activity', 'agent', 'hadPlan', 'hadActivity', 'atTime', 'hadRole'
+    ]
+)
+PROF = Namespace('http://www.w3.org/ns/dx/prof/')
+SDO = Namespace('https://schema.org/')
+SH = Namespace('http://www.w3.org/ns/shacl#')
+SKOS = ClosedNamespace(
+    uri=URIRef('http://www.w3.org/2004/02/skos/core#'),
+    terms=[
+        # all taken from https://www.w3.org/TR/skos-reference/#L1302
+        'Concept', 'ConceptScheme', 'inScheme', 'hasTopConcept', 'topConceptOf',
+        'altLabel', 'hiddenLabel', 'prefLabel', 'notation', 'changeNote',
+        'definition', 'editorialNote', 'example', 'historyNote', 'note',
+        'scopeNote', 'broader', 'broaderTransitive', 'narrower', 'narrowerTransitive',
+        'related', 'semanticRelation', 'Collection', 'OrderedCollection', 'member',
+        'memberList', 'broadMatch', 'closeMatch', 'exactMatch', 'mappingRelation',
+        'narrowMatch', 'relatedMatch'
+    ]
+)
+SOSA = Namespace('http://www.w3.org/ns/ssn/')
+SSN = Namespace('http://www.w3.org/ns/sosa/')
+TIME = Namespace('http://www.w3.org/2006/time#')
 VOID = Namespace('http://rdfs.org/ns/void#')
-
 
 
 class NamespaceManager(object):
@@ -274,17 +352,27 @@ class NamespaceManager(object):
         >>>
 
     """
+
     def __init__(self, graph):
         self.graph = graph
         self.__cache = {}
+        self.__cache_strict = {}
         self.__log = None
-        self.bind("xml", u"http://www.w3.org/XML/1998/namespace")
+        self.__strie = {}
+        self.__trie = {}
+        for p, n in self.namespaces():  # self.bind is not always called
+            insert_trie(self.__trie, str(n))
+        self.bind("xml", "http://www.w3.org/XML/1998/namespace")
         self.bind("rdf", RDF)
         self.bind("rdfs", RDFS)
         self.bind("xsd", XSD)
 
     def reset(self):
         self.__cache = {}
+        self.__strie = {}
+        self.__trie = {}
+        for p, n in self.namespaces():  # repopulate the trie
+            insert_trie(self.__trie, str(n))
 
     def __get_store(self):
         return self.graph.store
@@ -297,6 +385,13 @@ class NamespaceManager(object):
         else:
             return ":".join((prefix, name))
 
+    def qname_strict(self, uri):
+        prefix, namespace, name = self.compute_qname_strict(uri)
+        if prefix == '':
+            return name
+        else:
+            return ':'.join((prefix, name))
+
     def normalizeUri(self, rdfTerm):
         """
         Takes an RDF Term and 'normalizes' it into a QName (using the
@@ -305,7 +400,9 @@ class NamespaceManager(object):
         """
         try:
             namespace, name = split_uri(rdfTerm)
-            namespace = URIRef(unicode(namespace))
+            if namespace not in self.__strie:
+                insert_strie(self.__strie, self.__trie, str(namespace))
+            namespace = URIRef(text_type(namespace))
         except:
             if isinstance(rdfTerm, Variable):
                 return "?%s" % rdfTerm
@@ -323,17 +420,35 @@ class NamespaceManager(object):
     def compute_qname(self, uri, generate=True):
 
         if not _is_valid_uri(uri):
-            raise Exception('"%s" does not look like a valid URI, I cannot serialize this. Perhaps you wanted to urlencode it?'%uri)
+            raise ValueError(
+                '"{}" does not look like a valid URI, cannot serialize this. Did you want to urlencode it?'.format(uri)
+            )
 
+        if uri not in self.__cache:
+            try:
+                namespace, name = split_uri(uri)
+            except ValueError as e:
+                namespace = URIRef(uri)
+                prefix = self.store.prefix(namespace)
+                if not prefix:
+                    raise e
+            if namespace not in self.__strie:
+                insert_strie(self.__strie, self.__trie, namespace)
 
-        if not uri in self.__cache:
-            namespace, name = split_uri(uri)
+            if self.__strie[namespace]:
+                pl_namespace = get_longest_namespace(self.__strie[namespace], uri)
+                if pl_namespace is not None:
+                    namespace = pl_namespace
+                    name = uri[len(namespace):]
+
             namespace = URIRef(namespace)
-            prefix = self.store.prefix(namespace)
+            prefix = self.store.prefix(namespace)  # warning multiple prefixes problem
+
             if prefix is None:
                 if not generate:
-                    raise Exception(
-                        "No known prefix for %s and generate=False")
+                    raise KeyError(
+                        "No known prefix for {} and generate=False".format(namespace)
+                    )
                 num = 1
                 while 1:
                     prefix = "ns%s" % num
@@ -344,8 +459,57 @@ class NamespaceManager(object):
             self.__cache[uri] = (prefix, namespace, name)
         return self.__cache[uri]
 
-    def bind(self, prefix, namespace, override=True, replace=False):
+    def compute_qname_strict(self, uri, generate=True):
+        # code repeated to avoid branching on strict every time
+        # if output needs to be strict (e.g. for xml) then
+        # only the strict output should bear the overhead
+        prefix, namespace, name = self.compute_qname(uri)
+        if is_ncname(text_type(name)):
+            return prefix, namespace, name
+        else:
+            if uri not in self.__cache_strict:
+                try:
+                    namespace, name = split_uri(uri, NAME_START_CATEGORIES)
+                except ValueError as e:
+                    message = ('This graph cannot be serialized to a strict format '
+                               'because there is no valid way to shorten {}'.format(uri))
+                    raise ValueError(message)
+                    # omitted for strict since NCNames cannot be empty
+                    #namespace = URIRef(uri)
+                    #prefix = self.store.prefix(namespace)
+                    #if not prefix:
+                        #raise e
 
+                if namespace not in self.__strie:
+                    insert_strie(self.__strie, self.__trie, namespace)
+
+                # omitted for strict
+                #if self.__strie[namespace]:
+                    #pl_namespace = get_longest_namespace(self.__strie[namespace], uri)
+                    #if pl_namespace is not None:
+                        #namespace = pl_namespace
+                        #name = uri[len(namespace):]
+
+                namespace = URIRef(namespace)
+                prefix = self.store.prefix(namespace)  # warning multiple prefixes problem
+
+                if prefix is None:
+                    if not generate:
+                        raise KeyError(
+                            "No known prefix for {} and generate=False".format(namespace)
+                        )
+                    num = 1
+                    while 1:
+                        prefix = "ns%s" % num
+                        if not self.store.namespace(prefix):
+                            break
+                        num += 1
+                    self.bind(prefix, namespace)
+                self.__cache_strict[uri] = (prefix, namespace, name)
+
+            return self.__cache_strict[uri]
+
+    def bind(self, prefix, namespace, override=True, replace=False):
         """bind a given namespace to the prefix
 
         if override, rebind, even if the given namespace is already
@@ -355,7 +519,7 @@ class NamespaceManager(object):
 
         """
 
-        namespace = URIRef(unicode(namespace))
+        namespace = URIRef(text_type(namespace))
         # When documenting explain that override only applies in what cases
         if prefix is None:
             prefix = ''
@@ -370,6 +534,7 @@ class NamespaceManager(object):
 
             if replace:
                 self.store.bind(prefix, namespace)
+                insert_trie(self.__trie, str(namespace))
                 return
 
             # prefix already in use for different namespace
@@ -397,9 +562,9 @@ class NamespaceManager(object):
             elif bound_prefix == prefix:
                 pass  # already bound
             else:
-                if override or bound_prefix.startswith("_"):  # or a generated
-                                                              # prefix
+                if override or bound_prefix.startswith("_"):  # or a generated prefix
                     self.store.bind(prefix, namespace)
+        insert_trie(self.__trie, str(namespace))
 
     def namespaces(self):
         for prefix, namespace in self.store.namespaces():
@@ -449,11 +614,12 @@ class NamespaceManager(object):
 #
 # * Characters '-' and '.' are allowed as name characters.
 
-from unicodedata import category
 
 NAME_START_CATEGORIES = ["Ll", "Lu", "Lo", "Lt", "Nl"]
+SPLIT_START_CATEGORIES = NAME_START_CATEGORIES + ['Nd']
 NAME_CATEGORIES = NAME_START_CATEGORIES + ["Mc", "Me", "Mn", "Lm", "Nd"]
-ALLOWED_NAME_CHARS = [u"\u00B7", u"\u0387", u"-", u".", u"_"]
+ALLOWED_NAME_CHARS = [u"\u00B7", u"\u0387", u"-", u".", u"_", u":"]
+
 
 # http://www.w3.org/TR/REC-xml-names/#NT-NCName
 #  [4] NCName ::= (Letter | '_') (NCNameChar)* /* An XML Name, minus
@@ -463,40 +629,77 @@ ALLOWED_NAME_CHARS = [u"\u00B7", u"\u0387", u"-", u".", u"_"]
 
 
 def is_ncname(name):
-    first = name[0]
-    if first == "_" or category(first) in NAME_START_CATEGORIES:
-        for i in xrange(1, len(name)):
-            c = name[i]
-            if not category(c) in NAME_CATEGORIES:
-                if c in ALLOWED_NAME_CHARS:
-                    continue
-                return 0
-            # if in compatibility area
-            # if decomposition(c)!='':
-            #    return 0
+    if name:
+        first = name[0]
+        if first == "_" or category(first) in NAME_START_CATEGORIES:
+            for i in range(1, len(name)):
+                c = name[i]
+                if not category(c) in NAME_CATEGORIES:
+                    if c != ':' and c in ALLOWED_NAME_CHARS:
+                        continue
+                    return 0
+                # if in compatibility area
+                # if decomposition(c)!='':
+                #    return 0
 
-        return 1
-    else:
-        return 0
+            return 1
+
+    return 0
+
 
 XMLNS = "http://www.w3.org/XML/1998/namespace"
 
 
-def split_uri(uri):
+def split_uri(uri, split_start=SPLIT_START_CATEGORIES):
     if uri.startswith(XMLNS):
         return (XMLNS, uri.split(XMLNS)[1])
     length = len(uri)
-    for i in xrange(0, length):
+    for i in range(0, length):
         c = uri[-i - 1]
         if not category(c) in NAME_CATEGORIES:
             if c in ALLOWED_NAME_CHARS:
                 continue
-            for j in xrange(-1 - i, length):
-                if category(uri[j]) in NAME_START_CATEGORIES or uri[j] == "_":
+            for j in range(-1 - i, length):
+                if category(uri[j]) in split_start or uri[j] == "_":
+                    # _ prevents early split, roundtrip not generate
                     ns = uri[:j]
                     if not ns:
                         break
                     ln = uri[j:]
                     return (ns, ln)
             break
-    raise Exception("Can't split '%s'" % uri)
+    raise ValueError("Can't split '{}'".format(uri))
+
+def insert_trie(trie, value):  # aka get_subtrie_or_insert
+    """ Insert a value into the trie if it is not already contained in the trie.
+        Return the subtree for the value regardless of whether it is a new value
+        or not. """
+    if value in trie:
+        return trie[value]
+    multi_check = False
+    for key in tuple(trie.keys()):
+        if len(value) > len(key) and value.startswith(key):
+            return insert_trie(trie[key], value)
+        elif key.startswith(value):  # we know the value is not in the trie
+            if not multi_check:
+                trie[value] = {}
+                multi_check = True  # there can be multiple longer existing prefixes
+            dict_ = trie.pop(key)  # does not break strie since key<->dict_ remains unchanged
+            trie[value][key] = dict_
+    if value not in trie:
+        trie[value] = {}
+    return trie[value]
+
+def insert_strie(strie, trie, value):
+    if value not in strie:
+        strie[value] = insert_trie(trie, value)
+
+def get_longest_namespace(trie, value):
+    for key in trie:
+        if value.startswith(key):
+            out = get_longest_namespace(trie[key], value)
+            if out is None:
+                return key
+            else:
+                return out
+    return None

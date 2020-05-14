@@ -6,11 +6,11 @@ from rdflib.namespace import Namespace
 
 from rdflib.graph import Graph, ConjunctiveGraph
 
-from rdflib.py3compat import b
+from six import text_type, b
 
 __all__ = ['TriXSerializer']
 
-## TODO: MOve this somewhere central
+# TODO: Move this somewhere central
 TRIXNS = Namespace("http://www.w3.org/2004/03/trix/trix-1/")
 XMLNS = Namespace("http://www.w3.org/XML/1998/namespace")
 
@@ -29,6 +29,11 @@ class TriXSerializer(Serializer):
         self.writer = XMLWriter(stream, nm, encoding, extra_ns={"": TRIXNS})
 
         self.writer.push(TRIXNS[u"TriX"])
+        # if base is given here, use that, if not and a base is set for the graph use that
+        if base is None and self.store.base is not None:
+            base = self.store.base
+        if base is not None:
+            self.writer.attribute("http://www.w3.org/XML/1998/namespacebase", base)
         self.writer.namespaces()
 
         if isinstance(self.store, ConjunctiveGraph):
@@ -44,9 +49,11 @@ class TriXSerializer(Serializer):
 
     def _writeGraph(self, graph):
         self.writer.push(TRIXNS[u"graph"])
+        if graph.base:
+            self.writer.attribute("http://www.w3.org/XML/1998/namespacebase", graph.base)
         if isinstance(graph.identifier, URIRef):
             self.writer.element(
-                TRIXNS[u"uri"], content=unicode(graph.identifier))
+                TRIXNS[u"uri"], content=text_type(graph.identifier))
 
         for triple in graph.triples((None, None, None)):
             self._writeTriple(triple)
@@ -57,24 +64,22 @@ class TriXSerializer(Serializer):
         for component in triple:
             if isinstance(component, URIRef):
                 self.writer.element(TRIXNS[u"uri"],
-                                    content=unicode(component))
+                                    content=text_type(component))
             elif isinstance(component, BNode):
                 self.writer.element(TRIXNS[u"id"],
-                                    content=unicode(component))
+                                    content=text_type(component))
             elif isinstance(component, Literal):
                 if component.datatype:
                     self.writer.element(TRIXNS[u"typedLiteral"],
-                                        content=unicode(component),
+                                        content=text_type(component),
                                         attributes={TRIXNS[u"datatype"]:
-                                                    unicode(
-                                                        component.datatype)})
+                                                    text_type(component.datatype)})
                 elif component.language:
                     self.writer.element(TRIXNS[u"plainLiteral"],
-                                        content=unicode(component),
+                                        content=text_type(component),
                                         attributes={XMLNS[u"lang"]:
-                                                    unicode(
-                                                        component.language)})
+                                                    text_type(component.language)})
                 else:
                     self.writer.element(TRIXNS[u"plainLiteral"],
-                                        content=unicode(component))
+                                        content=text_type(component))
         self.writer.pop()

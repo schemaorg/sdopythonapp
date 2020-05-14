@@ -1,9 +1,12 @@
+import logging
+from io import BytesIO
 
 from xml.sax.saxutils import XMLGenerator
 from xml.dom import XML_NAMESPACE
 from xml.sax.xmlreader import AttributesNSImpl
 
-from xml.etree import cElementTree as ElementTree
+from rdflib.compat import etree
+from six import iteritems
 
 from rdflib import Literal, URIRef, BNode, Graph, Variable
 from rdflib.query import (
@@ -13,8 +16,12 @@ from rdflib.query import (
     ResultException
 )
 
+from six import text_type
+
 SPARQL_XML_NAMESPACE = u'http://www.w3.org/2005/sparql-results#'
 RESULTS_NS_ET = '{%s}' % SPARQL_XML_NAMESPACE
+
+log = logging.getLogger(__name__)
 
 
 """A Parser for SPARQL results in XML:
@@ -30,24 +37,18 @@ Authors: Drew Perttula, Gunnar Aastrand Grimnes
 
 class XMLResultParser(ResultParser):
 
-    def parse(self, source):
+    def parse(self, source, content_type=None):
         return XMLResult(source)
 
 
 class XMLResult(Result):
-    def __init__(self, source):
+    def __init__(self, source, content_type=None):
 
-        xmlstring = source.read()
-
-        if isinstance(xmlstring, unicode):
-            xmlstring = xmlstring.encode('utf-8')
         try:
-            tree = ElementTree.fromstring(xmlstring)
-        except Exception, e:
-            try:
-                raise e.__class__("error parsing %r: %s" % (xmlstring, e))
-            except:
-                raise e
+            parser = etree.XMLParser(huge_tree=True)
+            tree = etree.parse(source, parser)
+        except TypeError:
+            tree = etree.parse(source)
 
         boolean = tree.find(RESULTS_NS_ET + 'boolean')
         results = tree.find(RESULTS_NS_ET + 'results')
@@ -57,18 +58,11 @@ class XMLResult(Result):
         elif results is not None:
             type_ = 'SELECT'
         else:
-            g = Graph()
-            try:
-                g.parse(data=xmlstring)
-                if len(g) == 0:
-                    raise
-                type_ = 'CONSTRUCT'
-
-            except:
-                raise ResultException(
-                    "No RDF Graph, result-bindings or boolean answer found!")
+            raise ResultException(
+                "No RDF result-bindings or boolean answer found!")
 
         Result.__init__(self, type_)
+
         if type_ == 'SELECT':
             self.bindings = []
             for result in results:
@@ -82,10 +76,8 @@ class XMLResult(Result):
                          './%shead/%svariable' % (
                              RESULTS_NS_ET, RESULTS_NS_ET))]
 
-        elif type_ == 'ASK':
+        else:
             self.askAnswer = boolean.text.lower().strip() == "true"
-        elif type_ == 'CONSTRUCT':
-            self.graph = g
 
 
 def parseTerm(element):
@@ -129,7 +121,7 @@ class XMLResultSerializer(ResultSerializer):
             writer.write_results_header()
             for b in self.result.bindings:
                 writer.write_start_result()
-                for key, val in b.iteritems():
+                for key, val in iteritems(b):
                     writer.write_binding(key, val)
 
                 writer.write_end_result()
@@ -142,10 +134,11 @@ class SPARQLXMLWriter:
     """
     Python saxutils-based SPARQL XML Writer
     """
+
     def __init__(self, output, encoding='utf-8'):
         writer = XMLGenerator(output, encoding)
         writer.startDocument()
-        writer.startPrefixMapping(u'sparql', SPARQL_XML_NAMESPACE)
+        writer.startPrefixMapping(u'', SPARQL_XML_NAMESPACE)
         writer.startPrefixMapping(u'xml', XML_NAMESPACE)
         writer.startElementNS(
             (SPARQL_XML_NAMESPACE, u'sparql'),
@@ -159,9 +152,9 @@ class SPARQLXMLWriter:
         self.writer.startElementNS(
             (SPARQL_XML_NAMESPACE, u'head'),
             u'head', AttributesNSImpl({}, {}))
-        for i in xrange(0, len(allvarsL)):
+        for i in range(0, len(allvarsL)):
             attr_vals = {
-                (None, u'name'): unicode(allvarsL[i]),
+                (None, u'name'): text_type(allvarsL[i]),
             }
             attr_qnames = {
                 (None, u'name'): u'name',
@@ -203,7 +196,7 @@ class SPARQLXMLWriter:
         assert self._resultStarted
 
         attr_vals = {
-            (None, u'name'): unicode(name),
+            (None, u'name'): text_type(name),
         }
         attr_qnames = {
             (None, u'name'): u'name',

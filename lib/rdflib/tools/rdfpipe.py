@@ -5,6 +5,8 @@ A commandline tool for parsing RDF in different formats and serializing the
 resulting graph to a chosen format.
 """
 
+from __future__ import absolute_import
+
 import sys
 from optparse import OptionParser
 import logging
@@ -18,7 +20,7 @@ from rdflib.parser import Parser
 from rdflib.serializer import Serializer
 
 from rdflib.util import guess_format
-from rdflib.py3compat import PY3
+from six import PY3
 
 
 DEFAULT_INPUT_FORMAT = 'xml'
@@ -97,8 +99,8 @@ def make_option_parser():
         "%prog [-h] [-i INPUT_FORMAT] [-o OUTPUT_FORMAT] " +
         "[--ns=PFX=NS ...] [-] [FILE ...]",
         description=__doc__.strip() + (
-        " Reads file system paths, URLs or from stdin if '-' is given."
-        " The result is serialized to stdout."),
+            " Reads file system paths, URLs or from stdin if '-' is given."
+            " The result is serialized to stdout."),
         version="%prog " + "(using rdflib %s)" % rdflib.__version__)
 
     oparser.add_option(
@@ -147,7 +149,8 @@ def make_option_parser():
 
     return oparser
 
-_get_plugin_names = lambda kind: ", ".join(
+
+def _get_plugin_names(kind): return ", ".join(
     p.name for p in plugin.plugins(kind=kind))
 
 

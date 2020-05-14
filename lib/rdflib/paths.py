@@ -1,6 +1,7 @@
-from rdflib.py3compat import PY3, format_doctest_out
+from six import PY3
 
-__doc__ = format_doctest_out("""
+
+__doc__ = """
 
 This module implements the SPARQL 1.1 Property path operators, as
 defined in:
@@ -31,18 +32,19 @@ In SPARQL the syntax is as follows:
 |                    | of the path by zero or one matches of elt.      |
 +--------------------+-------------------------------------------------+
 |!iri or             | Negated property set. An IRI which is not one of|
-|!(iri\ :sub:`1`\ |  | iri\ :sub:`1`...iri\ :sub:`n`.                  |
-|... |iri\ :sub:`n`) | !iri is short for !(iri).                       |
+|!(iri\ :sub:`1`\ \| | iri\ :sub:`1`...iri\ :sub:`n`.                  |
+|... \|iri\ :sub:`n`)| !iri is short for !(iri).                       |
 +--------------------+-------------------------------------------------+
 |!^iri or            | Negated property set where the excluded matches |
-|!(^iri\ :sub:`1`\ | | are based on reversed path. That is, not one of |
-|... |^iri\ :sub:`n`)| iri\ :sub:`1`...iri\ :sub:`n` as reverse paths. |
+|!(^iri\ :sub:`1`\ \|| are based on reversed path. That is, not one of |
+|...\|^iri\ :sub:`n`)| iri\ :sub:`1`...iri\ :sub:`n` as reverse paths. |
 |                    | !^iri is short for !(^iri).                     |
 +--------------------+-------------------------------------------------+
-|!(iri\ :sub:`1`\ |  | A combination of forward and reverse            |
-|...|iri\ :sub:`j`\ || properties in a negated property set.           |
-|^iri\ :sub:`j+1`\ | |                                                 |
-|... |^iri\ :sub:`n`)|                                                 |
+|!(iri\ :sub:`1`\ \| | A combination of forward and reverse            |
+|...\|iri\ :sub:`j`\ | properties in a negated property set.           |
+|\|^iri\ :sub:`j+1`\ |                                                 |
+|\|... \|^iri\       |                                                 |
+|:sub:`n`)|          |                                                 |
 +--------------------+-------------------------------------------------+
 |(elt)               | A group path elt, brackets control precedence.  |
 +--------------------+-------------------------------------------------+
@@ -63,8 +65,8 @@ Path(~http://xmlns.com/foaf/0.1/knows)
 >>> foaf.knows/foaf.name
 Path(http://xmlns.com/foaf/0.1/knows / http://xmlns.com/foaf/0.1/name)
 
->>> foaf.name|foaf.firstName
-Path(http://xmlns.com/foaf/0.1/name | http://xmlns.com/foaf/0.1/firstName)
+>>> foaf.name|foaf.givenName
+Path(http://xmlns.com/foaf/0.1/name | http://xmlns.com/foaf/0.1/givenName)
 
 Modifiers (?, *, +) are done using * (the multiplication operator) and
 the strings '*', '?', '+', also defined as constants in this file.
@@ -99,8 +101,8 @@ True
 Graph generator functions, triples, subjects, objects, etc. :
 
 >>> list(g.objects(e.c, (e.p3*OneOrMore)/e.p2)) # doctest: +NORMALIZE_WHITESPACE
-[rdflib.term.URIRef(%(u)s'ex:j'), rdflib.term.URIRef(%(u)s'ex:g'),
-    rdflib.term.URIRef(%(u)s'ex:f')]
+[rdflib.term.URIRef(u'ex:j'), rdflib.term.URIRef(u'ex:g'),
+    rdflib.term.URIRef(u'ex:f')]
 
 A more complete set of tests:
 
@@ -130,27 +132,27 @@ True
 True
 
 >>> list(evalPath(g, (e.q, e.px*OneOrMore, None)))
-[(rdflib.term.URIRef(%(u)s'ex:q'), rdflib.term.URIRef(%(u)s'ex:q'))]
+[(rdflib.term.URIRef(u'ex:q'), rdflib.term.URIRef(u'ex:q'))]
 
 >>> list(evalPath(g, (None, e.p1|e.p2, e.c)))
-[(rdflib.term.URIRef(%(u)s'ex:a'), rdflib.term.URIRef(%(u)s'ex:c'))]
+[(rdflib.term.URIRef(u'ex:a'), rdflib.term.URIRef(u'ex:c'))]
 
 >>> list(evalPath(g, (None, ~e.p1, e.a))) == [ (e.c, e.a) ]
 True
 >>> list(evalPath(g, (None, e.p1*ZeroOrOne, e.c))) # doctest: +NORMALIZE_WHITESPACE
-[(rdflib.term.URIRef(%(u)s'ex:c'), rdflib.term.URIRef(%(u)s'ex:c')),
- (rdflib.term.URIRef(%(u)s'ex:a'), rdflib.term.URIRef(%(u)s'ex:c'))]
+[(rdflib.term.URIRef(u'ex:c'), rdflib.term.URIRef(u'ex:c')),
+ (rdflib.term.URIRef(u'ex:a'), rdflib.term.URIRef(u'ex:c'))]
 
 >>> list(evalPath(g, (None, e.p3*OneOrMore, e.a))) # doctest: +NORMALIZE_WHITESPACE
-[(rdflib.term.URIRef(%(u)s'ex:h'), rdflib.term.URIRef(%(u)s'ex:a')),
- (rdflib.term.URIRef(%(u)s'ex:g'), rdflib.term.URIRef(%(u)s'ex:a')),
- (rdflib.term.URIRef(%(u)s'ex:c'), rdflib.term.URIRef(%(u)s'ex:a'))]
+[(rdflib.term.URIRef(u'ex:h'), rdflib.term.URIRef(u'ex:a')),
+ (rdflib.term.URIRef(u'ex:g'), rdflib.term.URIRef(u'ex:a')),
+ (rdflib.term.URIRef(u'ex:c'), rdflib.term.URIRef(u'ex:a'))]
 
 >>> list(evalPath(g, (None, e.p3*ZeroOrMore, e.a))) # doctest: +NORMALIZE_WHITESPACE
-[(rdflib.term.URIRef(%(u)s'ex:a'), rdflib.term.URIRef(%(u)s'ex:a')),
- (rdflib.term.URIRef(%(u)s'ex:h'), rdflib.term.URIRef(%(u)s'ex:a')),
- (rdflib.term.URIRef(%(u)s'ex:g'), rdflib.term.URIRef(%(u)s'ex:a')),
- (rdflib.term.URIRef(%(u)s'ex:c'), rdflib.term.URIRef(%(u)s'ex:a'))]
+[(rdflib.term.URIRef(u'ex:a'), rdflib.term.URIRef(u'ex:a')),
+ (rdflib.term.URIRef(u'ex:h'), rdflib.term.URIRef(u'ex:a')),
+ (rdflib.term.URIRef(u'ex:g'), rdflib.term.URIRef(u'ex:a')),
+ (rdflib.term.URIRef(u'ex:c'), rdflib.term.URIRef(u'ex:a'))]
 
 >>> list(evalPath(g, (None, -e.p1, e.f))) == [(e.a, e.f)]
 True
@@ -164,27 +166,27 @@ True
 True
 
 >>> list(evalPath(g, (e.q, e.px*OneOrMore, None)))
-[(rdflib.term.URIRef(%(u)s'ex:q'), rdflib.term.URIRef(%(u)s'ex:q'))]
+[(rdflib.term.URIRef(u'ex:q'), rdflib.term.URIRef(u'ex:q'))]
 
 >>> list(evalPath(g, (e.c, (e.p2|e.p3)*ZeroOrMore, e.j)))
-[(rdflib.term.URIRef(%(u)s'ex:c'), rdflib.term.URIRef(%(u)s'ex:j'))]
+[(rdflib.term.URIRef(u'ex:c'), rdflib.term.URIRef(u'ex:j'))]
 
 No vars specified:
 
 >>> sorted(list(evalPath(g, (None, e.p3*OneOrMore, None)))) #doctest: +NORMALIZE_WHITESPACE
-[(rdflib.term.URIRef(%(u)s'ex:c'), rdflib.term.URIRef(%(u)s'ex:a')),
- (rdflib.term.URIRef(%(u)s'ex:c'), rdflib.term.URIRef(%(u)s'ex:g')),
- (rdflib.term.URIRef(%(u)s'ex:c'), rdflib.term.URIRef(%(u)s'ex:h')),
- (rdflib.term.URIRef(%(u)s'ex:g'), rdflib.term.URIRef(%(u)s'ex:a')),
- (rdflib.term.URIRef(%(u)s'ex:g'), rdflib.term.URIRef(%(u)s'ex:h')),
- (rdflib.term.URIRef(%(u)s'ex:h'), rdflib.term.URIRef(%(u)s'ex:a'))]
+[(rdflib.term.URIRef(u'ex:c'), rdflib.term.URIRef(u'ex:a')),
+ (rdflib.term.URIRef(u'ex:c'), rdflib.term.URIRef(u'ex:g')),
+ (rdflib.term.URIRef(u'ex:c'), rdflib.term.URIRef(u'ex:h')),
+ (rdflib.term.URIRef(u'ex:g'), rdflib.term.URIRef(u'ex:a')),
+ (rdflib.term.URIRef(u'ex:g'), rdflib.term.URIRef(u'ex:h')),
+ (rdflib.term.URIRef(u'ex:h'), rdflib.term.URIRef(u'ex:a'))]
 
 .. versionadded:: 4.0
 
-""")
+"""
 
 
-from rdflib.term import URIRef
+from rdflib.term import URIRef, Node
 
 
 # property paths
@@ -194,9 +196,36 @@ OneOrMore = '+'
 ZeroOrOne = '?'
 
 
-class Path:
+class Path(object):
     def eval(self, graph, subj=None, obj=None):
         raise NotImplementedError()
+
+    def __hash__(self):
+        return hash(repr(self))
+
+    def __eq__(self, other):
+        return repr(self) == repr(other)
+
+    def __lt__(self, other):
+        if not isinstance(other, (Path, Node)):
+            raise TypeError('unorderable types: %s() < %s()' % (
+                repr(self), repr(other)))
+        return repr(self) < repr(other)
+
+    def __le__(self, other):
+        if not isinstance(other, (Path, Node)):
+            raise TypeError('unorderable types: %s() < %s()' % (
+                repr(self), repr(other)))
+        return repr(self) <= repr(other)
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __gt__(self, other):
+        return not self <= other
+
+    def __ge__(self, other):
+        return not self < other
 
 
 class InvPath(Path):
@@ -210,6 +239,9 @@ class InvPath(Path):
 
     def __repr__(self):
         return "Path(~%s)" % (self.arg,)
+
+    def n3(self):
+        return '^%s' % self.arg.n3()
 
 
 class SequencePath(Path):
@@ -252,6 +284,9 @@ class SequencePath(Path):
     def __repr__(self):
         return "Path(%s)" % " / ".join(str(x) for x in self.args)
 
+    def n3(self):
+        return '/'.join(a.n3() for a in self.args)
+
 
 class AlternativePath(Path):
     def __init__(self, *args):
@@ -269,6 +304,9 @@ class AlternativePath(Path):
 
     def __repr__(self):
         return "Path(%s)" % " | ".join(str(x) for x in self.args)
+
+    def n3(self):
+        return '|'.join(a.n3() for a in self.args)
 
 
 class MulPath(Path):
@@ -323,7 +361,7 @@ class MulPath(Path):
                     for s2, o2 in _bwd(None, s, seen):
                         yield s2, o
 
-        def _fwdbwd():
+        def _all_fwd_paths():
             if self.zero:
                 seen1 = set()
                 # According to the spec, ALL nodes are possible solutions
@@ -339,15 +377,17 @@ class MulPath(Path):
                         seen1.add(o)
                         yield o, o
 
+            seen = set()
             for s, o in evalPath(graph, (None, self.path, None)):
                 if not self.more:
                     yield s, o
                 else:
-                    seen = set()
-                    f = list(_fwd(s, None, seen))  # cache or recompute?
-                    for s3, o3 in _bwd(None, o, seen):
-                        for s2, o2 in f:
-                            yield s3, o2  # ?
+                    if s not in seen:
+                        seen.add(s)
+                        f = list(_fwd(s, None, set()))
+                        for s1, o1 in f:
+                            assert s1 == s
+                            yield(s1, o1)
 
         done = set()  # the spec does by defn. not allow duplicates
         if subj:
@@ -361,13 +401,16 @@ class MulPath(Path):
                     done.add(x)
                     yield x
         else:
-            for x in _fwdbwd():
+            for x in _all_fwd_paths():
                 if x not in done:
                     done.add(x)
                     yield x
 
     def __repr__(self):
         return "Path(%s%s)" % (self.path, self.mod)
+
+    def n3(self):
+        return '%s%s' % (self.path.n3(), self.mod)
 
 
 class NegatedPath(Path):
@@ -398,6 +441,9 @@ class NegatedPath(Path):
     def __repr__(self):
         return "Path(! %s)" % ",".join(str(x) for x in self.args)
 
+    def n3(self):
+        return '!(%s)' % ('|'.join(self.args))
+
 
 class PathList(list):
     pass
@@ -424,6 +470,7 @@ def path_sequence(self, other):
 def evalPath(graph, t):
     return ((s, o) for s, p, o in graph.triples(t))
 
+
 def mul_path(p, mul):
     """
     cardinality path
@@ -443,7 +490,6 @@ def neg_path(p):
     negated path
     """
     return NegatedPath(p)
-
 
 
 if __name__ == '__main__':

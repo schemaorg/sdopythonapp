@@ -28,6 +28,9 @@ Statement and component type checkers
 * check_pattern
 
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 from calendar import timegm
 from time import altzone
@@ -38,7 +41,6 @@ from time import time
 from time import timezone
 
 from os.path import splitext
-from StringIO import StringIO
 
 from rdflib.exceptions import ContextTypeError
 from rdflib.exceptions import ObjectTypeError
@@ -51,7 +53,7 @@ from rdflib.namespace import NamespaceManager
 from rdflib.term import BNode
 from rdflib.term import Literal
 from rdflib.term import URIRef
-from rdflib.py3compat import sign
+from rdflib.compat import sign
 
 __all__ = [
     'list2set', 'first', 'uniq', 'more_than', 'to_term', 'from_n3',
@@ -154,7 +156,9 @@ def from_n3(s, default=None, backend=None, nsm=None):
     if not s:
         return default
     if s.startswith('<'):
-        return URIRef(s[1:-1])
+        # Hack: this should correctly handle strings with either native unicode
+        # characters, or \u1234 unicode escapes.
+        return URIRef(s[1:-1].encode("raw-unicode-escape").decode("unicode-escape"))
     elif s.startswith('"'):
         if s.startswith('"""'):
             quotes = '"""'
@@ -177,7 +181,7 @@ def from_n3(s, default=None, backend=None, nsm=None):
             if rest.startswith("@"):
                 language = rest[1:]  # strip leading at sign
 
-        value = value.replace(r'\"', '"').replace('\\\\', '\\')
+        value = value.replace(r'\"', '"')
         # Hack: this should correctly handle strings with either native unicode
         # characters, or \u1234 unicode escapes.
         value = value.encode("raw-unicode-escape").decode("unicode-escape")
@@ -338,9 +342,6 @@ def parse_date_time(val):
     return t
 
 
-
-
-
 SUFFIX_FORMAT_MAP = {
     'rdf': 'xml',
     'rdfs': 'xml',
@@ -482,11 +483,10 @@ def get_tree(graph,
     return (mapper(root), sorted(tree, key=sortkey))
 
 
-
-
 def test():
     import doctest
     doctest.testmod()
+
 
 if __name__ == "__main__":
     # try to make the tests work outside of the time zone they were written in
