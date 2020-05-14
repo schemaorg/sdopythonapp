@@ -22,6 +22,7 @@ import api
 from apimarkdown import Markdown
 import StringIO
 
+rdflib.plugin.register("rdfa", Parser, "pyRdfa.rdflibparsers", "RDFaParser")
 rdflib.plugin.register("json-ld", Parser, "rdflib_jsonld.parser", "JsonLDParser")
 rdflib.plugin.register("json-ld", Serializer, "rdflib_jsonld.serializer", "JsonLDSerializer")
 
@@ -137,10 +138,12 @@ def load_graph(context, files,prefix=None,vocab=None):
             format = "rdfa"
         elif(f[-7:] == ".jsonld"):
             format = "json-ld"
+        elif(f[-4:] == ".ttl"):
+            format = "turtle"
         else:
             log.info("Unrecognised file format: %s" % f) 
             return       
-        if(format == "rdfa"):
+        if(format == "rdfa" or format == "turtle"):
             uri = getNss(context)
             g = STORE.graph(URIRef(uri))
             g.parse(f,format=format)

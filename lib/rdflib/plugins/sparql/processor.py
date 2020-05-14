@@ -6,6 +6,7 @@ These should be automatically registered with RDFLib
 
 """
 
+from six import string_types
 
 from rdflib.query import Processor, Result, UpdateProcessor
 
@@ -22,7 +23,9 @@ def prepareQuery(queryString, initNs={}, base=None):
     """
     Parse and translate a SPARQL Query
     """
-    return translateQuery(parseQuery(queryString), base, initNs)
+    ret = translateQuery(parseQuery(queryString), base, initNs)
+    ret._original_args = (queryString, initNs, base)
+    return ret
 
 
 def processUpdate(graph, updateString, initBindings={}, initNs={}, base=None):
@@ -43,13 +46,14 @@ class SPARQLResult(Result):
         self.askAnswer = res.get("askAnswer")
         self.graph = res.get("graph")
 
+
 class SPARQLUpdateProcessor(UpdateProcessor):
     def __init__(self, graph):
         self.graph = graph
 
     def update(self, strOrQuery, initBindings={}, initNs={}):
-        if isinstance(strOrQuery, basestring): 
-            strOrQuery=translateUpdate(parseUpdate(strOrQuery), initNs=initNs)
+        if isinstance(strOrQuery, string_types):
+            strOrQuery = translateUpdate(parseUpdate(strOrQuery), initNs=initNs)
 
         return evalUpdate(self.graph, strOrQuery, initBindings)
 
@@ -73,5 +77,4 @@ class SPARQLProcessor(Processor):
             query = translateQuery(parsetree, base, initNs)
         else:
             query = strOrQuery
-
         return evalQuery(self.graph, query, initBindings, base)

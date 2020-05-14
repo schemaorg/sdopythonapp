@@ -10,25 +10,29 @@ matching against the results from the store it's wrapping.
 
 from rdflib.store import Store
 from rdflib.graph import Graph
+
+from six import text_type
+
 import re
 
 # Store is capable of doing its own REGEX matching
 NATIVE_REGEX = 0
-# Store uses Python's re module internally for REGEX matching 
+# Store uses Python's re module internally for REGEX matching
 PYTHON_REGEX = 1
 
 
-class REGEXTerm(unicode):
+class REGEXTerm(text_type):
     """
     REGEXTerm can be used in any term slot and is interpreted as a request to
     perform a REGEX match (not a string comparison) using the value
     (pre-compiled) for checking rdf:type matches
     """
+
     def __init__(self, expr):
         self.compiledExpr = re.compile(expr)
 
     def __reduce__(self):
-        return (REGEXTerm, (unicode(''),))
+        return (REGEXTerm, (text_type(''),))
 
 
 def regexCompareQuad(quad, regexQuad):
@@ -66,15 +70,15 @@ class REGEXMatching(Store):
         if isinstance(subject, REGEXTerm) or \
             isinstance(predicate, REGEXTerm) or \
             isinstance(object_, REGEXTerm) or \
-                (context is not None
-                 and isinstance(context.identifier, REGEXTerm)):
+                (context is not None and
+                 isinstance(context.identifier, REGEXTerm)):
             # One or more of the terms is a REGEX expression, so we must
             # replace it / them with wildcard(s)and match after we query.
             s = not isinstance(subject, REGEXTerm) and subject or None
             p = not isinstance(predicate, REGEXTerm) and predicate or None
             o = not isinstance(object_, REGEXTerm) and object_ or None
-            c = (context is not None
-                 and not isinstance(context.identifier, REGEXTerm)) \
+            c = (context is not None and
+                 not isinstance(context.identifier, REGEXTerm)) \
                 and context \
                 or None
 
@@ -97,15 +101,15 @@ class REGEXMatching(Store):
         if isinstance(subject, REGEXTerm) or \
             isinstance(predicate, REGEXTerm) or \
             isinstance(object_, REGEXTerm) or \
-                (context is not None
-                 and isinstance(context.identifier, REGEXTerm)):
+                (context is not None and
+                 isinstance(context.identifier, REGEXTerm)):
             # One or more of the terms is a REGEX expression, so we must
             # replace it / them with wildcard(s) and match after we query.
             s = not isinstance(subject, REGEXTerm) and subject or None
             p = not isinstance(predicate, REGEXTerm) and predicate or None
             o = not isinstance(object_, REGEXTerm) and object_ or None
-            c = (context is not None
-                 and not isinstance(context.identifier, REGEXTerm)) \
+            c = (context is not None and
+                 not isinstance(context.identifier, REGEXTerm)) \
                 and context \
                 or None
             for (s1, p1, o1), cg in self.storage.triples((s, p, o), c):

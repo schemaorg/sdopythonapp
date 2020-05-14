@@ -3,7 +3,7 @@ import collections
 from rdflib.term import Variable, Literal, BNode, URIRef
 
 from rdflib.plugins.sparql.operators import EBV
-from rdflib.plugins.sparql.parserutils import Expr, CompValue
+from rdflib.plugins.sparql.parserutils import Expr, CompValue, value
 from rdflib.plugins.sparql.sparql import SPARQLError, NotBoundError
 
 
@@ -23,7 +23,6 @@ def _minus(a, b):
             yield x
 
 
-
 def _join(a, b):
     for x in a:
         for y in b:
@@ -32,7 +31,6 @@ def _join(a, b):
 
 
 def _ebv(expr, ctx):
-
     """
     Return true/false for the given expr
     Either the expr is itself true/false
@@ -61,7 +59,7 @@ def _ebv(expr, ctx):
     return False
 
 
-def _eval(expr, ctx):
+def _eval(expr, ctx, raise_not_bound_error=True):
     if isinstance(expr, (Literal, URIRef)):
         return expr
     if isinstance(expr, Expr):
@@ -70,7 +68,10 @@ def _eval(expr, ctx):
         try:
             return ctx[expr]
         except KeyError:
-            return NotBoundError("Variable %s is not bound" % expr)
+            if raise_not_bound_error:
+                raise NotBoundError("Variable %s is not bound" % expr)
+            else:
+                return None
     elif isinstance(expr, CompValue):
         raise Exception(
             "Weird - _eval got a CompValue without evalfn! %r" % expr)
@@ -85,7 +86,6 @@ def _filter(a, expr):
 
 
 def _fillTemplate(template, solution):
-
     """
     For construct/deleteWhere and friends
 
@@ -109,3 +109,15 @@ def _fillTemplate(template, solution):
                 _o is not None:
 
             yield (_s, _p, _o)
+
+
+def _val(v):
+    """ utilitity for ordering things"""
+    if isinstance(v, Variable):
+        return (0, v)
+    elif isinstance(v, BNode):
+        return (1, v)
+    elif isinstance(v, URIRef):
+        return (2, v)
+    elif isinstance(v, Literal):
+        return (3, v)

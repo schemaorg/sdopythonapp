@@ -175,6 +175,7 @@ class VTerm():
             self.srcaks = []
             objs = self.loadObjects("dc:source")
             objs += self.loadObjects("dct:source") #TODO Findout why dc:source in rdf files cets turned into dct:source when loaded.
+            objs += self.loadObjects("schema:source") #To accept later ttl versions.
             for obj in objs:
                 term = VTerm._getTerm(obj,createReference=True)
                 sortedAddUnique(self.srcaks,term)

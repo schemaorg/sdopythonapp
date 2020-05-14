@@ -24,6 +24,9 @@ information.
 .. __: http://peak.telecommunity.com/DevCenter/setuptools#dynamic-discovery-of-services-and-plugins
 
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 from rdflib.store import Store
 from rdflib.parser import Parser
@@ -110,7 +113,7 @@ except ImportError:
     pass  # TODO: log a message
 else:
     # add the plugins specified via pkg_resources' EntryPoints.
-    for entry_point, kind in entry_points.iteritems():
+    for entry_point, kind in entry_points.items():
         for ep in iter_entry_points(entry_point):
             _plugins[(ep.name, kind)] = PKGPlugin(ep.name, kind, ep)
 
@@ -125,6 +128,7 @@ def plugins(name=None, kind=None):
         if (name is None or name == p.name) and (
                 kind is None or kind == p.kind):
             yield p
+
 
 register(
     'default', Store,
@@ -167,14 +171,24 @@ register(
     'turtle', Serializer,
     'rdflib.plugins.serializers.turtle', 'TurtleSerializer')
 register(
+    'ttl', Serializer,
+    'rdflib.plugins.serializers.turtle', 'TurtleSerializer')
+register(
     'trig', Serializer,
     'rdflib.plugins.serializers.trig', 'TrigSerializer')
 register(
     'application/n-triples', Serializer,
     'rdflib.plugins.serializers.nt', 'NTSerializer')
 register(
+    'ntriples', Serializer,
+    'rdflib.plugins.serializers.nt', 'NTSerializer')
+register(
     'nt', Serializer,
     'rdflib.plugins.serializers.nt', 'NTSerializer')
+register(
+    'nt11', Serializer,
+    'rdflib.plugins.serializers.nt', 'NT11Serializer')
+
 register(
     'pretty-xml', Serializer,
     'rdflib.plugins.serializers.rdfxml', 'PrettyXMLSerializer')
@@ -185,10 +199,10 @@ register(
     'application/trix', Serializer,
     'rdflib.plugins.serializers.trix', 'TriXSerializer')
 register(
-    "application/n-quads", Serializer,
+    'application/n-quads', Serializer,
     'rdflib.plugins.serializers.nquads', 'NQuadsSerializer')
 register(
-    "nquads", Serializer,
+    'nquads', Serializer,
     'rdflib.plugins.serializers.nquads', 'NQuadsSerializer')
 
 register(
@@ -210,10 +224,19 @@ register(
     'turtle', Parser,
     'rdflib.plugins.parsers.notation3', 'TurtleParser')
 register(
+    'ttl', Parser,
+    'rdflib.plugins.parsers.notation3', 'TurtleParser')
+register(
     'application/n-triples', Parser,
     'rdflib.plugins.parsers.nt', 'NTParser')
 register(
+    'ntriples', Parser,
+    'rdflib.plugins.parsers.nt', 'NTParser')
+register(
     'nt', Parser,
+    'rdflib.plugins.parsers.nt', 'NTParser')
+register(
+    'nt11', Parser,
     'rdflib.plugins.parsers.nt', 'NTParser')
 register(
     'application/n-quads', Parser,
@@ -230,46 +253,6 @@ register(
 register(
     'trig', Parser,
     'rdflib.plugins.parsers.trig', 'TrigParser')
-
-# The basic parsers: RDFa (by default, 1.1),
-# microdata, and embedded turtle (a.k.a. hturtle)
-register(
-    'hturtle', Parser,
-    'rdflib.plugins.parsers.hturtle', 'HTurtleParser')
-register(
-    'rdfa', Parser,
-    'rdflib.plugins.parsers.structureddata', 'RDFaParser')
-register(
-    'mdata', Parser,
-    'rdflib.plugins.parsers.structureddata', 'MicrodataParser')
-register(
-    'microdata', Parser,
-    'rdflib.plugins.parsers.structureddata', 'MicrodataParser')
-# A convenience to use the RDFa 1.0 syntax (although the parse method can
-# be invoked with an rdfa_version keyword, too)
-register(
-    'rdfa1.0', Parser,
-    'rdflib.plugins.parsers.structureddata', 'RDFa10Parser')
-# Just for the completeness, if the user uses this
-register(
-    'rdfa1.1', Parser,
-    'rdflib.plugins.parsers.structureddata', 'RDFaParser')
-# An HTML file may contain both microdata, rdfa, or turtle. If the user
-# wants them all, the parser below simply invokes all:
-register(
-    'html', Parser,
-    'rdflib.plugins.parsers.structureddata', 'StructuredDataParser')
-# Some media types are also bound to RDFa
-register(
-    'application/svg+xml', Parser,
-    'rdflib.plugins.parsers.structureddata', 'RDFaParser')
-register(
-    'application/xhtml+xml', Parser,
-    'rdflib.plugins.parsers.structureddata', 'RDFaParser')
-# 'text/html' media type should be equivalent to html:
-register(
-    'text/html', Parser,
-    'rdflib.plugins.parsers.structureddata', 'StructuredDataParser')
 
 
 register(
@@ -288,24 +271,56 @@ register(
     'xml', ResultSerializer,
     'rdflib.plugins.sparql.results.xmlresults', 'XMLResultSerializer')
 register(
+    'application/sparql-results+xml', ResultSerializer,
+    'rdflib.plugins.sparql.results.xmlresults', 'XMLResultSerializer')
+register(
     'txt', ResultSerializer,
     'rdflib.plugins.sparql.results.txtresults', 'TXTResultSerializer')
 register(
     'json', ResultSerializer,
     'rdflib.plugins.sparql.results.jsonresults', 'JSONResultSerializer')
 register(
+    'application/sparql-results+json', ResultSerializer,
+    'rdflib.plugins.sparql.results.jsonresults', 'JSONResultSerializer')
+register(
     'csv', ResultSerializer,
+    'rdflib.plugins.sparql.results.csvresults', 'CSVResultSerializer')
+register(
+    'text/csv', ResultSerializer,
     'rdflib.plugins.sparql.results.csvresults', 'CSVResultSerializer')
 
 register(
     'xml', ResultParser,
     'rdflib.plugins.sparql.results.xmlresults', 'XMLResultParser')
 register(
+    'application/sparql-results+xml', ResultParser,
+    'rdflib.plugins.sparql.results.xmlresults', 'XMLResultParser')
+register(
+    'application/sparql-results+xml; charset=UTF-8', ResultParser,
+    'rdflib.plugins.sparql.results.xmlresults', 'XMLResultParser')
+
+register(
+    'application/rdf+xml', ResultParser,
+    'rdflib.plugins.sparql.results.graph', 'GraphResultParser')
+
+
+register(
     'json', ResultParser,
     'rdflib.plugins.sparql.results.jsonresults', 'JSONResultParser')
+register(
+    'application/sparql-results+json', ResultParser,
+    'rdflib.plugins.sparql.results.jsonresults', 'JSONResultParser')
+
 register(
     'csv', ResultParser,
     'rdflib.plugins.sparql.results.csvresults', 'CSVResultParser')
 register(
+    'text/csv', ResultParser,
+    'rdflib.plugins.sparql.results.csvresults', 'CSVResultParser')
+
+register(
     'tsv', ResultParser,
+    'rdflib.plugins.sparql.results.tsvresults', 'TSVResultParser')
+register(
+    'text/tab-separated-values', ResultParser,
     'rdflib.plugins.sparql.results.tsvresults', 'TSVResultParser')

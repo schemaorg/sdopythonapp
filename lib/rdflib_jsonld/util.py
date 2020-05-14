@@ -4,7 +4,7 @@ try:
 except ImportError:
     import simplejson as json
 
-from rdflib.py3compat import PY3
+from ._compat import IS_PY3 as PY3
 
 from os import sep
 from os.path import normpath
@@ -42,11 +42,40 @@ def split_iri(iri):
     return iri, None
 
 def norm_url(base, url):
-    url = urljoin(base, url)
-    parts = urlsplit(url)
+    """
+    >>> norm_url('http://example.org/', '/one')
+    'http://example.org/one'
+    >>> norm_url('http://example.org/', '/one#')
+    'http://example.org/one#'
+    >>> norm_url('http://example.org/one', 'two')
+    'http://example.org/two'
+    >>> norm_url('http://example.org/one/', 'two')
+    'http://example.org/one/two'
+    >>> norm_url('http://example.org/', 'http://example.net/one')
+    'http://example.net/one'
+    >>> norm_url('http://example.org/', 'http://example.org//one')
+    'http://example.org//one'
+    """
+    parts = urlsplit(urljoin(base, url))
     path = normpath(parts[2])
     if sep != '/':
         path = '/'.join(path.split(sep))
     if parts[2].endswith('/') and not path.endswith('/'):
         path += '/'
-    return urlunsplit(parts[0:2] + (path,) + parts[3:])
+    result = urlunsplit(parts[0:2] + (path,) + parts[3:])
+    if url.endswith('#') and not result.endswith('#'):
+        result += '#'
+    return result
+
+def context_from_urlinputsource(source):
+    if source.content_type == 'application/json':
+        # response_info was added to InputSource in rdflib 4.2
+        try:
+            links = source.response_info.getallmatchingheaders('Link')
+        except AttributeError:
+            return
+        for link in links:
+            if ' rel="http://www.w3.org/ns/json-ld#context"' in link:
+                i, j = link.index('<'), link.index('>')
+                if i > -1 and j > -1:
+                    return urljoin(source.url, link[i+1:j])

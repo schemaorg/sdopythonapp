@@ -1,15 +1,20 @@
+from __future__ import absolute_import
+
 import collections
 import itertools
 import datetime
 
+import isodate
+from six import text_type, iteritems
+
+from rdflib.compat import Mapping, MutableMapping
 from rdflib.namespace import NamespaceManager
 from rdflib import Variable, BNode, Graph, ConjunctiveGraph, URIRef, Literal
 from rdflib.term import Node
 
-from parserutils import CompValue
+from rdflib.plugins.sparql.parserutils import CompValue
 
 import rdflib.plugins.sparql
-from rdflib.plugins.sparql.compat import Mapping, MutableMapping
 
 
 class SPARQLError(Exception):
@@ -24,6 +29,7 @@ class NotBoundError(SPARQLError):
 
 class AlreadyBound(SPARQLError):
     """Raised when trying to bind a variable that is already bound!"""
+
     def __init__(self):
         SPARQLError.__init__(self)
 
@@ -83,10 +89,10 @@ class Bindings(MutableMapping):
             d = d.outer
 
     def __str__(self):
-        return "Bindings({"+", ".join((k, self[k]) for k in self)+"})"
+        return "Bindings({" + ", ".join((k, self[k]) for k in self) + "})"
 
     def __repr__(self):
-        return unicode(self)
+        return text_type(self)
 
 
 class FrozenDict(Mapping):
@@ -96,6 +102,7 @@ class FrozenDict(Mapping):
     Taken from http://stackoverflow.com/a/2704866/81121
 
     """
+
     def __init__(self, *args, **kwargs):
         self._d = dict(*args, **kwargs)
         self._hash = None
@@ -117,14 +124,14 @@ class FrozenDict(Mapping):
         # urge to optimize when it will gain improved algorithmic performance.
         if self._hash is None:
             self._hash = 0
-            for key, value in self.iteritems():
+            for key, value in iteritems(self):
                 self._hash ^= hash(key)
                 self._hash ^= hash(value)
         return self._hash
 
     def project(self, vars):
         return FrozenDict(
-            (x for x in self.iteritems() if x[0] in vars))
+            (x for x in iteritems(self) if x[0] in vars))
 
     def disjointDomain(self, other):
         return not bool(set(self).intersection(other))
@@ -141,7 +148,7 @@ class FrozenDict(Mapping):
 
     def merge(self, other):
         res = FrozenDict(
-            itertools.chain(self.iteritems(), other.iteritems()))
+            itertools.chain(iteritems(self), iteritems(other)))
 
         return res
 
@@ -166,15 +173,18 @@ class FrozenBindings(FrozenDict):
         if not type(key) in (BNode, Variable):
             return key
 
-        return self._d[key]
+        if key not in self._d:
+            return self.ctx.initBindings[key]
+        else:
+            return self._d[key]
 
     def project(self, vars):
         return FrozenBindings(
-            self.ctx, (x for x in self.iteritems() if x[0] in vars))
+            self.ctx, (x for x in iteritems(self) if x[0] in vars))
 
     def merge(self, other):
         res = FrozenBindings(
-            self.ctx, itertools.chain(self.iteritems(), other.iteritems()))
+            self.ctx, itertools.chain(iteritems(self), iteritems(other)))
 
         return res
 
@@ -191,19 +201,28 @@ class FrozenBindings(FrozenDict):
     bnodes = property(_bnodes)
     now = property(_now)
 
-    def forget(self, before):
+    def forget(self, before, _except=None):
         """
         return a frozen dict only of bindings made in self
         since before
         """
+        if not _except:
+            _except = []
 
-        return FrozenBindings(self.ctx, (x for x in self.iteritems() if before[x[0]] is None))
+        # bindings from initBindings are newer forgotten
+        return FrozenBindings(
+            self.ctx, (
+                x for x in iteritems(self) if (
+                    x[0] in _except or
+                    x[0] in self.ctx.initBindings or
+                    before[x[0]] is None)))
 
     def remember(self, these):
         """
         return a frozen dict only of bindings in these
         """
-        return FrozenBindings(self.ctx, (x for x in self.iteritems() if x[0] in these))
+        return FrozenBindings(
+            self.ctx, (x for x in iteritems(self) if x[0] in these))
 
 
 class QueryContext(object):
@@ -212,8 +231,11 @@ class QueryContext(object):
     Query context - passed along when evaluating the query
     """
 
-    def __init__(self, graph=None, bindings=None):
-        self.bindings = bindings or Bindings()
+    def __init__(self, graph=None, bindings=None, initBindings=None):
+        self.initBindings = initBindings
+        self.bindings = Bindings(d=bindings or [])
+        if initBindings:
+            self.bindings.update(initBindings)
 
         if isinstance(graph, ConjunctiveGraph):
             self._dataset = graph
@@ -226,15 +248,14 @@ class QueryContext(object):
             self.graph = graph
 
         self.prologue = None
-        self.now = datetime.datetime.now()
+        self.now = datetime.datetime.now(isodate.tzinfo.UTC)
 
         self.bnodes = collections.defaultdict(BNode)
 
     def clone(self, bindings=None):
         r = QueryContext(
-            self._dataset if self._dataset is not None else self.graph)
+            self._dataset if self._dataset is not None else self.graph, bindings or self.bindings, initBindings=self.initBindings)
         r.prologue = self.prologue
-        r.bindings.update(bindings or self.bindings)
         r.graph = self.graph
         r.bnodes = self.bnodes
         return r
@@ -265,7 +286,7 @@ class QueryContext(object):
             except:
                 raise Exception(
                     "Could not load %s as either RDF/XML, N3 or NTriples" % (
-                    source))
+                        source))
 
         if not rdflib.plugins.sparql.SPARQL_LOAD_GRAPHS:
             # we are not loading - if we already know the graph
@@ -301,10 +322,10 @@ class QueryContext(object):
         if vars:
             return FrozenBindings(
                 self, ((k, v)
-                       for k, v in self.bindings.iteritems()
+                       for k, v in iteritems(self.bindings)
                        if k in vars))
         else:
-            return FrozenBindings(self, self.bindings.iteritems())
+            return FrozenBindings(self, iteritems(self.bindings))
 
     def __setitem__(self, key, value):
         if key in self.bindings and self.bindings[key] != value:
@@ -338,7 +359,7 @@ class QueryContext(object):
         return c
 
 
-class Prologue:
+class Prologue(object):
 
     """
     A class for holding prefixing bindings and base URI information
@@ -359,7 +380,6 @@ class Prologue:
         self.namespace_manager.bind(prefix, uri, replace=True)
 
     def absolutize(self, iri):
-
         """
         Apply BASE / PREFIXes to URIs
         (and to datatypes in Literals)
@@ -374,12 +394,13 @@ class Prologue:
                 return Literal(
                     iri.string, lang=iri.lang,
                     datatype=self.absolutize(iri.datatype))
-        elif isinstance(iri, URIRef) and not ':' in iri:  # TODO: Check for relative URI?
-            return URIRef(self.base + iri)
+        elif isinstance(iri, URIRef) and not ':' in iri:
+            return URIRef(iri, base=self.base)
+
         return iri
 
 
-class Query:
+class Query(object):
     """
     A parsed and translated query
     """

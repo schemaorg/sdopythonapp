@@ -9,6 +9,8 @@ You can draw the graph of an RDF file directly:
 
 """
 
+from __future__ import absolute_import
+
 import rdflib
 import rdflib.extras.cmdlineutils
 
@@ -127,6 +129,7 @@ language to stdout
 
 def main():
     rdflib.extras.cmdlineutils.main(rdf2dot, _help)
+
 
 if __name__ == '__main__':
     main()

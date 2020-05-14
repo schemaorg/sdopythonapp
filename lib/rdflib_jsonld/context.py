@@ -5,11 +5,14 @@ Implementation of the JSON-LD Context structure. See:
     http://json-ld.org/
 
 """
+from collections import namedtuple
 from rdflib.namespace import RDF
 
-from .util import source_to_json, urljoin, split_iri, norm_url
+from ._compat import basestring, unicode
 from .keys import (BASE, CONTAINER, CONTEXT, GRAPH, ID, INDEX, LANG, LIST,
         REV, SET, TYPE, VALUE, VOCAB)
+from . import errors
+from .util import source_to_json, urljoin, urlsplit, split_iri, norm_url
 
 
 NODE_KEYS = set([LANG, ID, TYPE, VALUE, LIST, SET, REV, GRAPH])
@@ -26,6 +29,7 @@ class Context(object):
         self.base = base
         self.doc_base = base
         self.terms = {}
+        # _alias maps NODE_KEY to list of aliases
         self._alias = {}
         self._lookup = {}
         self._prefixes = {}
@@ -33,25 +37,19 @@ class Context(object):
         if source:
             self.load(source)
 
-    def load(self, source, base=None):
-        self.active = True
-        inputs = not isinstance(source, list) and [source] or source
-        sources = []
-        for source in inputs:
-            if isinstance(source, basestring):
-                url = urljoin(base, source)
-                #if url in visited_urls: continue
-                #visited_urls.append(url)
-                source = source_to_json(url)
-            if isinstance(source, dict):
-                if CONTEXT in source:
-                    source = source[CONTEXT]
-            if isinstance(source, list):
-                sources.extend(source)
-            else:
-                sources.append(source)
-        for source in sources:
-            self._read_source(source)
+    @property
+    def base(self):
+        return self._base
+
+    @base.setter
+    def base(self, base):
+        if base:
+            hash_index = base.find('#')
+            if hash_index > -1:
+                base = base[0:hash_index]
+        self._base = self.resolve_iri(base) if (
+                hasattr(self, '_base') and base is not None) else base
+        self._basedomain = '%s://%s' % urlsplit(base)[0:2] if base else None
 
     def subcontext(self, source):
         # IMPROVE: to optimize, implement SubContext with parent fallback support
@@ -92,10 +90,16 @@ class Context(object):
         return self._get(obj, REV)
 
     def _get(self, obj, key):
-        return obj.get(self._alias.get(key)) or obj.get(key)
+        for alias in self._alias.get(key, []):
+            if alias in obj:
+                return obj.get(alias)
+        return obj.get(key)
 
     def get_key(self, key):
-        return self._alias.get(key, key)
+        return self.get_keys(key)[0]
+
+    def get_keys(self, key):
+        return self._alias.get(key, [key])
 
     lang_key = property(lambda self: self.get_key(LANG))
     id_key = property(lambda self: self.get_key(ID))
@@ -136,12 +140,15 @@ class Context(object):
 
     def resolve(self, curie_or_iri):
         iri = self.expand(curie_or_iri, False)
-        if iri.startswith('_:'):
+        if self.isblank(iri):
             return iri
         return self.resolve_iri(iri)
 
     def resolve_iri(self, iri):
-        return norm_url(self.base, iri)
+        return norm_url(self._base, iri)
+
+    def isblank(self, ref):
+        return ref.startswith('_:')
 
     def expand(self, term_curie_or_iri, use_vocab=True):
         if use_vocab:
@@ -166,6 +173,11 @@ class Context(object):
         pfx = self._prefixes.get(ns)
         if pfx:
             return u":".join((pfx, name))
+        elif self._base:
+            if unicode(iri) == self._base:
+                return ""
+            elif iri.startswith(self._basedomain):
+                    return iri[len(self._basedomain):]
         return iri
 
     def to_symbol(self, iri):
@@ -181,7 +193,39 @@ class Context(object):
             return u":".join((pfx, name))
         return iri
 
-    def _read_source(self, source):
+    def load(self, source, base=None):
+        self.active = True
+        sources = []
+        source = source if isinstance(source, list) else [source]
+        self._prep_sources(base, source, sources)
+        for source_url, source in sources:
+            self._read_source(source, source_url)
+
+    def _prep_sources(self, base, inputs, sources, referenced_contexts=None,
+            in_source_url=None):
+        referenced_contexts = referenced_contexts or set()
+        for source in inputs:
+            if isinstance(source, basestring):
+                source_url = urljoin(base, source)
+                if source_url in referenced_contexts:
+                    raise errors.RECURSIVE_CONTEXT_INCLUSION
+                referenced_contexts.add(source_url)
+                source = source_to_json(source_url)
+                if CONTEXT not in source:
+                    raise errors.INVALID_REMOTE_CONTEXT
+            else:
+                source_url = in_source_url
+
+            if isinstance(source, dict):
+                if CONTEXT in source:
+                    source = source[CONTEXT]
+                    source = source if isinstance(source, list) else [source]
+            if isinstance(source, list):
+                self._prep_sources(base, source, sources, referenced_contexts, source_url)
+            else:
+                sources.append((source_url, source))
+
+    def _read_source(self, source, source_url=None):
         self.vocab = source.get(VOCAB, self.vocab)
         for key, value in source.items():
             if key == LANG:
@@ -189,15 +233,14 @@ class Context(object):
             elif key == VOCAB:
                 continue
             elif key == BASE:
-                # TODO: only base to None if source is embedded
-                #if value is None and remote:
-                #    self.base = self.doc_base
-                #else:
+                if source_url:
+                    continue
                 self.base = value
             else:
                 self._read_term(source, key, value)
 
     def _read_term(self, source, name, dfn):
+        idref = None
         if isinstance(dfn, dict):
             #term = self._create_term(source, key, value)
             rev = dfn.get(REV)
@@ -216,17 +259,28 @@ class Context(object):
             self.add_term(name, idref, coercion,
                     dfn.get(CONTAINER, UNDEF), dfn.get(LANG, UNDEF), bool(rev))
         else:
-            idref = self._rec_expand(source, dfn)
+            if isinstance(dfn, unicode):
+                idref = self._rec_expand(source, dfn)
             self.add_term(name, idref)
+
         if idref in NODE_KEYS:
-            self._alias[idref] = name
+            self._alias.setdefault(idref, []).append(name)
 
     def _rec_expand(self, source, expr, prev=None):
         if expr == prev or expr in NODE_KEYS:
             return expr
+
         is_term, pfx, nxt = self._prep_expand(expr)
         if pfx:
-            iri = self._get_source_id(source, pfx) or self.expand(pfx)
+            iri = self._get_source_id(source, pfx)
+            if iri is None:
+                if pfx + ':' == self.vocab:
+                    return expr
+                else:
+                    term = self.terms.get(pfx)
+                    if term:
+                        iri = term.id
+
             if iri is None:
                 nxt = expr
             else:
@@ -235,6 +289,7 @@ class Context(object):
             nxt = self._get_source_id(source, nxt) or nxt
             if ':' not in nxt and self.vocab:
                 return self.vocab + nxt
+
         return self._rec_expand(source, nxt, expr)
 
     def _prep_expand(self, expr):
@@ -258,12 +313,6 @@ class Context(object):
         return term
 
 
-class Term(object):
-    def __init__(self, idref, name, coercion=UNDEF, container=UNDEF,
-            language=UNDEF, reverse=False):
-        self.name = name
-        self.id = idref
-        self.type = coercion
-        self.container = container
-        self.language = language
-        self.reverse = reverse
+Term = namedtuple('Term',
+        'id, name, type, container, language, reverse')
+Term.__new__.__defaults__ = (UNDEF, UNDEF, UNDEF, False)

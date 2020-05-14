@@ -1,9 +1,9 @@
 
 from types import MethodType
 
-from rdflib.plugins.sparql.compat import OrderedDict
+from collections import OrderedDict
 
-from pyparsing import TokenConverter, ParseResults
+from pyparsing import TokenConverter, ParseResults, originalTextFor
 
 from rdflib import BNode, Variable, URIRef
 
@@ -45,7 +45,6 @@ the resulting CompValue
 # Comp('Sum')( Param('x')(Number) + '+' + Param('y')(Number) )
 
 def value(ctx, val, variables=False, errors=False):
-
     """
     utility function for evaluating something...
 
@@ -91,6 +90,7 @@ class ParamValue(object):
     This just keeps the name/value
     All cleverness is in the CompValue
     """
+
     def __init__(self, name, tokenList, isList):
         self.isList = isList
         self.name = name
@@ -109,6 +109,7 @@ class Param(TokenConverter):
     if isList is true repeat occurrences of ParamList have
     their values merged in a list
     """
+
     def __init__(self, name, expr, isList=False):
         self.name = name
         self.isList = isList
@@ -123,6 +124,7 @@ class ParamList(Param):
     """
     A shortcut for a Param with isList=True
     """
+
     def __init__(self, name, expr):
         Param.__init__(self, name, expr, True)
 
@@ -146,6 +148,9 @@ class CompValue(OrderedDict):
         OrderedDict.__init__(self)
         self.name = name
         self.update(values)
+
+    def clone(self):
+        return CompValue(self.name, **self)
 
     def __str__(self):
         return self.name + "_" + OrderedDict.__str__(self)
@@ -192,7 +197,7 @@ class Expr(CompValue):
         try:
             self.ctx = ctx
             return self._evalfn(ctx)
-        except SPARQLError, e:
+        except SPARQLError as e:
             return e
         finally:
             self.ctx = None
@@ -208,17 +213,24 @@ class Comp(TokenConverter):
     """
 
     def __init__(self, name, expr):
+        self.expr = expr
         TokenConverter.__init__(self, expr)
         self.name = name
         self.evalfn = None
 
     def postParse(self, instring, loc, tokenList):
-
         if self.evalfn:
             res = Expr(self.name)
             res._evalfn = MethodType(self.evalfn, res)
         else:
             res = CompValue(self.name)
+            if self.name == 'ServiceGraphPattern':
+                # Then this must be a service graph pattern and have
+                # already matched.
+                # lets assume there is one, for now, then test for two later.
+                sgp = originalTextFor(self.expr)
+                service_string = sgp.searchString(instring)[0][0]
+                res['service_string'] = service_string
 
         for t in tokenList:
             if isinstance(t, ParamValue):
@@ -238,6 +250,31 @@ class Comp(TokenConverter):
         return self
 
 
+def prettify_parsetree(t, indent='', depth=0):
+    out = []
+    if isinstance(t, ParseResults):
+        for e in t.asList():
+            out.append(prettify_parsetree(e, indent, depth + 1))
+        for k, v in sorted(t.items()):
+            out.append("%s%s- %s:\n" % (indent, '  ' * depth, k))
+            out.append(prettify_parsetree(v, indent, depth + 1))
+    elif isinstance(t, CompValue):
+        out.append("%s%s> %s:\n" % (indent, '  ' * depth, t.name))
+        for k, v in t.items():
+            out.append("%s%s- %s:\n" % (indent, '  ' * (depth + 1), k))
+            out.append(prettify_parsetree(v, indent, depth + 2))
+    elif isinstance(t, dict):
+        for k, v in t.items():
+            out.append("%s%s- %s:\n" % (indent, '  ' * (depth + 1), k))
+            out.append(prettify_parsetree(v, indent, depth + 2))
+    elif isinstance(t, list):
+        for e in t:
+            out.append(prettify_parsetree(e, indent, depth + 1))
+    else:
+        out.append("%s%s- %r\n" % (indent, '  ' * depth, t))
+    return "".join(out)
+
+
 if __name__ == '__main__':
     from pyparsing import Word, nums
     import sys
@@ -248,8 +285,8 @@ if __name__ == '__main__':
     Plus.setEvalFn(lambda self, ctx: self.a + self.b)
 
     r = Plus.parseString(sys.argv[1])
-    print r
-    print r[0].eval({})
+    print(r)
+    print(r[0].eval({}))
 
 # hurrah for circular imports
 from rdflib.plugins.sparql.sparql import SPARQLError, NotBoundError
