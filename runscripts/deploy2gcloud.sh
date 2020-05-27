@@ -86,7 +86,7 @@ do
 done
 while [ -z "$VERSION" ]
 do
-    read -r -p "Version: " response
+    read -r -p "Appengine Version ID: " response
    # VERSION="$response"
    if [ ! -z "$response" ]
    then

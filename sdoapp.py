@@ -662,14 +662,15 @@ class ShowUnit (webapp2.RequestHandler):
         if(term.id == "DataType"):  #Special case
             return "%s<a href=\"%s\">%s</a>" % (rdfalink,term.getId(), term.getId())
 
-        urlprefix = "."
+        #urlprefix = "."
+        urlprefix = ""
         home = term.getLayer()
 
-        if home in ENABLED_EXTENSIONS and home != getHostExt():
-            port = ""
-            if getHostPort() != "80":
-                port = ":%s" % getHostPort()
-            urlprefix = makeUrl(home,full=True)
+        #if home in ENABLED_EXTENSIONS and home != getHostExt():
+        #    port = ""
+        #    if getHostPort() != "80":
+        #        port = ":%s" % getHostPort()
+        #   urlprefix = makeUrl(home,full=True)
 
         extclass = ""
         extflag = ""
@@ -678,7 +679,7 @@ class ShowUnit (webapp2.RequestHandler):
             if home != "meta":
                 extclass = "class=\"ext ext-%s\" " % home
             extflag = EXTENSION_SUFFIX
-            tooltip = "title=\"Defined in extension: %s.schema.org\" " % home
+            tooltip = "title=\"Defined in section: %s.schema.org\" " % home
 
         return "%s<a %s %s href=\"%s%s%s\"%s>%s</a>%s" % (rdfalink,tooltip, extclass, urlprefix, hashorslash, term.getId(), title, label, extflag)
         #return "<a %s %s href=\"%s%s%s\"%s%s>%s</a>%s" % (tooltip, extclass, urlprefix, hashorslash, node.id, prop, title, label, extflag)
@@ -742,7 +743,9 @@ class ShowUnit (webapp2.RequestHandler):
         home = term.getLayer()
         if home != "core" and home != "":
             exthome = "%s.schema.org" % home
-            exthomeurl = uri = makeUrl(home,"/",full=True)
+            #exthomeurl = uri = makeUrl(home,"/",full=True)
+            exthomedoc = "/docs/%s.home.html" % home
+            exthomeurl = uri = makeUrl(home,exthomedoc,full=False)
             linktext = "Defined in the %s section."
             lt = SdoConfig.getDescriptor(home,"linktext")
             if lt:
@@ -1313,7 +1316,7 @@ class ShowUnit (webapp2.RequestHandler):
 
             if len(ext):
                 ext += "."
-            sitekeyedhomepage = "%sindex.html" % ext
+            sitekeyedhomepage = "%shome.html" % ext
             hp = getPageFromStore(sitekeyedhomepage)
             self.response.headers['Content-Type'] = "text/html"
             self.emitCacheHeaders()
@@ -1324,6 +1327,7 @@ class ShowUnit (webapp2.RequestHandler):
                 template_values = {
                     'ext_contents': self.handleExtensionContents(getHostExt()),
                     'home_page': "True",
+                    'debugging': getAppVar("DEBUGOUT")
                 }
                 page = templateRender('homepage.tpl', node, template_values)
                 self.response.out.write( page )
@@ -1465,7 +1469,8 @@ class ShowUnit (webapp2.RequestHandler):
 
         if (cached != None):
             log.info("GOT CACHED page for %s" % term.getId())
-            self.response.write(cached)
+            if self.response:
+                self.response.write(cached)
             return
         log.info("Building page")
 
@@ -1502,8 +1507,12 @@ class ShowUnit (webapp2.RequestHandler):
         self.emitchildren(term)
         self.emitAcksAndSources(term)
         self.emitTermExamples(term)
+        
+        debug = getAppVar("DEBUGOUT")
+        if not debug:
+            debug = "<!-- AppEngineVersion %s (%s) -->\n<!-- sdopythonapp version: %s -->" % (getAppEngineVersion(),appver,PYTHONAPP_VERSION)
 
-        self.write(" <br/>\n\n</div>\n</body>\n<!-- AppEngineVersion %s (%s) -->\n<!-- sdopythonapp version: %s -->\n</html>" % (getAppEngineVersion(),appver,PYTHONAPP_VERSION))
+        self.write(" <br/>\n\n</div>\n</body>\n%s\n</html>" % debug)
 
         page = "".join(self.outputStrings)
         setAppVar(CLOUDEXTRAMETA,{'x-goog-meta-sdotermlayer': term.getLayer()})
@@ -1584,7 +1593,7 @@ class ShowUnit (webapp2.RequestHandler):
     def emitchildren(self,term):
             children = term.getSubs()
 
-            log.info("CHILDREN: %s" % VTerm.term2str(children))
+            #log.info("CHILDREN: %s" % VTerm.term2str(children))
             isEnumAnc = VTerm.isEnumerationAncestor(term)
 
             if (len(children) > 0):
@@ -1697,11 +1706,11 @@ class ShowUnit (webapp2.RequestHandler):
             for ex in sorted(ENABLED_EXTENSIONS):
                 if ex != ATTIC:
                     t = SdoConfig.getDescriptor(ex,"disambiguatingDescription")
-                    extensions.append("<a title=\"%s\" href=\"%s\">%s.schema.org</a>" % (t,makeUrl(ex,"",full=True),ex))
+                    extensions.append("<a title=\"%s\" href=\"%s\">%s.schema.org</a>" % (t,"/docs/%s.home.html" % ex,ex))
 
             page = templateRender('schemas.tpl', node, {'counts': self.getCounts(),
                                     'extensions': extensions,
-                                    'attic': "<a href=\"%s\">%s.schema.org</a>" % (makeUrl(ATTIC,""),ATTIC),
+                                    'attic': "<a href=\"%s\">%s.schema.org</a>" % ("/docs/%s.home.html" % ATTIC,ATTIC),
                                     'menu_sel': "Schemas"})
 
             self.response.out.write( page )
@@ -1842,7 +1851,7 @@ class ShowUnit (webapp2.RequestHandler):
 
         if isinstance(node, Unit):
             node = node.id
-
+            
         self.response.headers['Content-Type'] = "application/ld+json"
         self.emitCacheHeaders()
 
@@ -2670,6 +2679,15 @@ class ShowUnit (webapp2.RequestHandler):
 
         if (node.startswith("docs/") and hstext != "core"): #All docs should operate in core
             return self.redirectToBase(node,True)
+            
+        match = re.match("docs/(.*)\\.home\\.html" , node)
+        if match:
+            ext = match.group(1)
+            tmp = getHostExt()
+            setHostExt(ext)
+            ret = self.handleHomepage("/")
+            setHostExt(tmp)
+            return ret
 
         if node in ["docs/jsonldcontext.json.txt", "docs/jsonldcontext.json", "docs/jsonldcontext.jsonld"]:
             if self.handleJSONContext(node):
@@ -2942,8 +2960,14 @@ def templateRender(templateName, node, values=None):
         docsdir = "/docs/"
         homedir = ""
     else:
-        docsdir = "docs/"
-        homedir = "."
+        docsdir = "/docs/"
+        homedir = ""
+        
+    loc = getAppVar("DocsLocationOverride")
+    if loc:
+        #log.info("Overriding Docs Location to: %s" % loc)
+        docsdir = loc
+        
     defvars = {
         'ENABLE_HOSTED_EXTENSIONS': ENABLE_HOSTED_EXTENSIONS,
         'SCHEMA_VERSION': SCHEMA_VERSION,
@@ -3132,7 +3156,7 @@ def makeUrl(ext="",path="",full=False,scheme=None):
 
 def getPageFromStore(id,ext=None,enableFlush=True):
         cached = PageStore.get(id,ext)
-        if enableFlush and cached and "_pageFlush" in getArguments():
+        if enableFlush and cached != None and "_pageFlush" in getArguments():
             log.info("Reloading page for %s" % id)
             PageStore.remove(id,ext)
             cached = None
