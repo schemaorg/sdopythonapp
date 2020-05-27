@@ -53,6 +53,8 @@ def setAppVar(var,val):
 
 CLOUDSTAT = "CloudStat"
 CLOUDEXTRAMETA = "CloudExtraMeta"
+FILESTAT = "FileStat"
+FILEEXTRAMETA = "FileExtraMeta"
 
 
 def full_path(filename):

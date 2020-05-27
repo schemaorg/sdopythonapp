@@ -164,7 +164,7 @@ class SdoCloudStore():
     def write_file(self, bucketFile, mtype=None, content="", raw=False, private=False, extrameta=None):
         """Create a file."""
 
-        log.info('Creating file {} ({})'.format(bucketFile,mtype))
+        #log.info('Creating file {} ({})'.format(bucketFile,mtype))
         bucketFile = self.getPath(bucketFile)
         return self._write_file(bucketFile=bucketFile, mtype=mtype, content=content, raw=raw, private=private, extrameta=extrameta)
 
@@ -266,7 +266,7 @@ class SdoCloudStore():
                 log.info("Stat error(%s): %s" % (bucketFile,e))
 
             if ret:
-                log.info("Stat {}".format(ret))
+                #log.info("Stat {}".format(ret))
                 itm = bucketCacheItem(ret,None)
                 self.writeCache(bucketFile, itm, ftype)
         return ret
@@ -341,7 +341,7 @@ class SdoCloudStore():
         return _delete_file(bucketFile=bucketFile, ftype=ftype)
         
     def _delete_file(self, bucketFile, ftype=None):
-        log.info("Deleting: %s" % bucketFile)
+        #log.info("Deleting: %s" % bucketFile)
         self.delCache(bucketFile, ftype)
         try:
               cloudstorage.delete(bucketFile)
@@ -418,7 +418,7 @@ class SdoCloudStore():
         self.delete_file(bucketFile,ftype)
         
     def delete_file(self,bucketFile,ftype=None):
-        log.info('Deleting file {}'.format(bucketFile))
+        #log.info('Deleting file {}'.format(bucketFile))
         self.delCache(bucketFile,reqtype=ftype)
         self._delete_file(self.getPath(bucketFile))
         

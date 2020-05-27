@@ -26,6 +26,7 @@ from testharness import *
 import apirdflib
 import apirdfterm
 from apirdfterm import VTerm
+from sdofilecache import *
 from sdoutil import *
 
 #from apirdflib import rdfGetTargets, rdfGetSources
@@ -57,6 +58,7 @@ log.info("IN TESTHARNESS %s" % getInTestHarness())
 if not getInTestHarness():
     from google.appengine.api import memcache
     from sdocloudstore import SdoCloud
+    from sdofilecache import SdoFileCache
 
 AllLayersList = []
 def setAllLayersList(val):
@@ -82,7 +84,8 @@ DYNALOAD = True # permits read_schemas to be re-invoked live.
 #   loader=jinja2.FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates')),
 #    extensions=['jinja2.ext.autoescape'], autoescape=True)
 
-PAGESTOREMODE = "CLOUDSTORE" #INMEM (In instance memory)
+PAGESTOREMODE = "NDBSHARED" #FILESTORE (In instance memory)
+                            #INMEM (In instance memory)
                             #NDBSHARED (NDB shared - accross instances)
                             #CLOUDSTORE - (Cloudstorage files)
 if "PAGESTOREMODE" in os.environ:
@@ -319,6 +322,63 @@ class CloudPageStoreTool():
     def remove(self, key,cache=None):
         SdoCloud.deleteFormattedFile(key)
 
+SdoFile = SdoFileCache(SdoFileCache.READWRITE)
+
+class FilePageStoreTool():
+    def __init__ (self):
+        self.init()
+    
+    def init(self):
+        log.info("FilePageStoreTool.init")
+        self.tlocal = threading.local()
+        self.tlocal.CurrentStoreSet = "core"
+        log.info("FilePageStoreTool.CurrentStoreSet: %s" % self.tlocal.CurrentStoreSet)
+        
+    def _getTypeFromKey(self,key):
+        name = key
+        typ = None
+        split = key.split(':')
+        if len(split) > 1:
+            name = split[1]
+            typ = split[0]
+            if typ[0] == '.':
+                typ = typ[1:]
+        #log.info("%s > %s %s" % (key,name,typ))
+        return name,typ
+
+    def initialise(self):
+        SdoFile.cleanCache()
+        #return {"FilePageStoreTool":SdoCloud.delete_files_in_bucket(skip=["/.status"])}
+            
+    def getCurrent(self):
+        try:
+            if not self.tlocal.CurrentStoreSet:
+                self.tlocal.CurrentStoreSet = "core"
+        except Exception:
+            self.tlocal.CurrentStoreSet = "core"
+        ret = self.tlocal.CurrentStoreSet
+        return ret
+        
+    def setCurrent(self,current):
+        self.tlocal.CurrentStoreSet = current
+        log.debug("FilePageStoreTool setting CurrentStoreSet: %s",current)
+        
+    def put(self, key, val,cache=None,extrameta=None):
+        fname, ftype = self._getTypeFromKey(key)
+        if not ftype:
+            ftype = "html"
+        SdoFile.writeFormattedFile(fname,ftype=ftype,content=val,extrameta=extrameta)
+        
+    def get(self, key,cache=None):
+        fname, ftype = self._getTypeFromKey(key)
+        if not ftype:
+            ftype = "html"
+        return SdoFile.readFormattedFile(fname,ftype=ftype)
+            
+    def remove(self, key,cache=None):
+        fname, ftype = self._getTypeFromKey(key)
+        SdoFile.deleteFormattedFile(fname,ftype)
+
 
 class HeaderEntity(ndb.Model):
     content = ndb.PickleProperty()
@@ -480,11 +540,20 @@ def enablePageStore(mode):
         log.info("[%s] Created HeaderStore" % getInstanceId(short=True))
         DataCache = DataStoreTool()
         log.info("[%s] Created DataStore" % getInstanceId(short=True))
+    elif(mode == "FILESTORE"):
+        log.info("[%s] Enabling CloudStore" % getInstanceId(short=True))
+        PageStore = FilePageStoreTool()
+        log.info("[%s] Created PageStore" % getInstanceId(short=True))
+        HeaderStore = HeaderStoreTool()
+        log.info("[%s] Created HeaderStore" % getInstanceId(short=True))
+        DataCache = DataStoreTool()
+        log.info("[%s] Created DataStore" % getInstanceId(short=True))
     else:
         log.error("Invalid storage mode: %s" % mode)
 
 if getInTestHarness(): #Override pagestore decision if in testharness
-    enablePageStore("INMEM")
+    #enablePageStore("INMEM")
+    enablePageStore(PAGESTOREMODE)
 else:
     enablePageStore(PAGESTOREMODE)
 
