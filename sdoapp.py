@@ -179,6 +179,10 @@ if getInTestHarness():
 LOADEDSOURCES = False
 
 noindexpages = True
+if "FORCEINDEXPAGES" in os.environ:
+    if os.environ["FORCEINDEXPAGES"].lower() == "true":
+        noindexpages = False
+
 
 SUBDOMAINS = True
 subs = os.environ.get("SUBDOMAINS",None)
