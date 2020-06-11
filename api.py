@@ -1417,8 +1417,8 @@ def read_schemas(files):
             log.info("read_schema '%s' '%s'" %(f.get("ext"),f.get("file")))
             apirdflib.load_graph(f.get("ext"),f.get("file"),prefix=f.get("prefix"),vocab=f.get("vocaburi"))
         except Exception as e:
-            log.error("exception loading schema file %s %s: %s" % (f.get("file"),e,e.message))
-            pass
+            log.error("exception loading schema file %s" % f.get("file"))
+            raise
         
         
     log.info("[%s] Loaded  graphs in %s" % (getInstanceId(short=True),(datetime.datetime.now() - load_start)))
@@ -1431,8 +1431,8 @@ def load_usage_data(files):
             parser = parsers.UsageFileParser(None)
             parser.parse(usage_data)
         except Exception as e:
-            log.error("exception loading usage data file %s %s: %s" % (f,e,e.message))
-            pass
+            log.error("exception loading usage data file %s" % f)
+            raise
         
     log.debug("[%s]Loaded usage data in %s" % (getInstanceId(short=True),(datetime.datetime.now() - load_start)))
     
@@ -1551,8 +1551,8 @@ def read_examples(files, layer):
                 first = False
             parser.parse(f)
         except Exception as e:
-            log.error("exception loading examples file %s %s: %s" % (f,e,e.message))
-            pass
+            log.error("exception loading examples file %s" % f)
+            raise
         
 
 EXAMPLESTORECACHE = []
