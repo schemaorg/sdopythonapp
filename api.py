@@ -1493,7 +1493,14 @@ def read_extensions(extensions):
     log.info("[%s]Loaded extension graphs in %s" % (getInstanceId(short=True),(datetime.datetime.now() - load_start)))
     extensionsLoaded = True
 
+EXAMPLESDATALOADED = False
 def load_examples_data(extensions):
+    global EXAMPLESDATALOADED
+    
+    if EXAMPLESDATALOADED:
+        return
+    EXAMPLESDATALOADED = True
+    
     if SdoConfig.isValid():
         load_example_sources(SdoConfig.exampleFiles())
         if not getInTestHarness() and EXAMPLESTOREMODE == "NDBSHARED": #Use NDB Storage
@@ -1516,6 +1523,7 @@ def load_example_sources(files):
     
 
 def load_local_examples_data(extensions):
+    
     log.info("Loading Local Examples")
     load = False
     if getInTestHarness():
@@ -1540,20 +1548,23 @@ def load_local_examples_data(extensions):
     else:
         log.info("Examples already loaded")
         
+EXAMPLEFILESREAD = []
 def read_examples(files, layer):
+    global EXAMPLEFILESREAD
     first = True
     for f in files:
-        try:
-            parser = parsers.ParseExampleFile(None,layer=layer)
-            #log.info("[%s] Reading: %s" % (getInstanceId(short=True),f))
-            if first:
-                #log.info("[%s] Loading examples from %s" % (getInstanceId(short=True),layer))
-                first = False
-            parser.parse(f)
-        except Exception as e:
-            log.error("exception loading examples file %s" % f)
-            raise
-        
+        if not f in EXAMPLEFILESREAD:
+            EXAMPLEFILESREAD.append(f)
+            try:
+                parser = parsers.ParseExampleFile(None,layer=layer)
+                #log.info("[%s] Reading: %s" % (getInstanceId(short=True),f))
+                if first:
+                    #log.info("[%s] Loading examples from %s" % (getInstanceId(short=True),layer))
+                    first = False
+                parser.parse(f)
+            except Exception as e:
+                log.error("exception loading examples file %s" % f)
+                raise
 
 EXAMPLESTORECACHE = []
 class ExampleStore(ndb.Model):
