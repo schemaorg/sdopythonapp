@@ -1075,9 +1075,11 @@ class ShowUnit (webapp2.RequestHandler):
 
         headerPrinted = False
         parentprops = False
+        stopontarget = False
         if term.isEnumeration():
             parentprops=True
-        props = term.getTargetOf(plusparents=parentprops)
+            stopontarget=True
+        props = term.getTargetOf(plusparents=parentprops,stopontarget=stopontarget)
         for prop in props:
             if (prop.superseded()):
                 continue
@@ -1618,11 +1620,12 @@ class ShowUnit (webapp2.RequestHandler):
                     elif term.isClass():
                         self.write("<br/><b><a %s>More specific Types</a></b><ul>" % self.showlink("subtypes"))
                     self.write(subtypes.getvalue())
+                    self.write("</ul>")
 
                 if len(members.getvalue()) > 0:
                     self.write("<br/><b><a %s>Enumeration members</a></b><ul>" % self.showlink("enumbers"))
                     self.write(members.getvalue())
-                self.write("</ul>")
+                    self.write("</ul>")
 
                 subtypes.close()
                 members.close()

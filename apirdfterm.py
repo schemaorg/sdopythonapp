@@ -271,7 +271,7 @@ class VTerm():
                 sortedAddUnique(self.domains,term)
         return self.domains
 
-    def getTargetOf(self,plusparents=False):
+    def getTargetOf(self,plusparents=False,stopontarget=False):
         if not self.targetOf:
             self.targetOf = []
             subs = self.loadSubjects("schema:rangeIncludes")
@@ -279,15 +279,18 @@ class VTerm():
                 term = VTerm._getTerm(sub,createReference=True)
                 sortedAddUnique(self.targetOf,term)
         ret = self.targetOf
-        if plusparents:
-            targets = self.targetOf
-            for s in self.getSupers():
-                if s.getId() == "Enumeration" or s.getId() == "Thing":
-                    break
-                ptargets = s.getTargetOf()
-                for t in ptargets:
-                    sortedAddUnique(targets,t)
-            ret = targets
+        if not (len(self.targetOf) and stopontarget):
+            if plusparents:
+                targets = self.targetOf
+                for s in self.getSupers():
+                    if s.getId() == "Enumeration" or s.getId() == "Thing":
+                        break
+                    ptargets = s.getTargetOf()
+                    for t in ptargets:
+                        sortedAddUnique(targets,t)
+                    if len(targets) and stopontarget:
+                        break
+                ret = targets
                 
         return ret
     def getEquivalents(self):
