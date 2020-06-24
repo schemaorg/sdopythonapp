@@ -1004,7 +1004,7 @@ class ShowUnit (webapp2.RequestHandler):
 
        for p in cl.getSupers():
 
-          if not p.isReference() and p.inLayers(layers):
+          if not p.isReference():
                continue
 
 
@@ -1021,32 +1021,12 @@ class ShowUnit (webapp2.RequestHandler):
 
        content = buff.getvalue()
        if(len(content) > 0):
-           if cl.getId() == "DataType":
-               self.write("<h4>Subclass of:<h4>")
-           else:
-               self.write("<h4>Available supertypes defined elsewhere</h4>")
+           self.write("<h4>Subclass of:<h4>")
            self.write("<ul>")
            self.write(content)
            self.write("</ul>")
        buff.close()
 
-    """    def emitClassExtensionProperties (self, cl, layers="core", out=None):
-           if not out:
-               out = self
-
-           buff = StringIO.StringIO()
-
-           for p in self.parentStack:
-               self._ClassExtensionProperties(buff, p, layers=layers)
-
-           content = buff.getvalue()
-           if(len(content) > 0):
-               self.write("<h4>Available properties in extensions</h4>")
-               self.write("<ul>")
-               self.write(content)
-               self.write("</ul>")
-           buff.close()
-    """
 
     def _ClassExtensionProperties (self, out, cl, layers="core"):
         """Write out a list of properties not displayed as they are in extensions for a per-type page."""
@@ -1094,7 +1074,10 @@ class ShowUnit (webapp2.RequestHandler):
             out = self
 
         headerPrinted = False
-        props = term.getTargetOf()
+        parentprops = False
+        if term.isEnumeration():
+            parentprops=True
+        props = term.getTargetOf(plusparents=parentprops)
         for prop in props:
             if (prop.superseded()):
                 continue
@@ -1105,7 +1088,10 @@ class ShowUnit (webapp2.RequestHandler):
             comment = prop.getComment()
 
             if (not headerPrinted):
-                self.write("<br/><br/><div id=\"incoming\">Instances of %s may appear as values for the following properties</div><br/>" % (self.ml(term)))
+                members = ""
+                if term.isEnumeration():
+                    members = " and its enumeration members or subtypes "
+                self.write("<br/><div id=\"incoming\">Instances of %s %smay appear as a value for the following properties</div><br/>" % (self.ml(term),members))
                 self.write("<table class=\"definition-table\">\n        \n  \n<thead>\n  <tr><th>Property</th><th>On Types</th><th>Description</th>               \n  </tr>\n</thead>\n\n")
 
                 headerPrinted = True
@@ -1488,14 +1474,14 @@ class ShowUnit (webapp2.RequestHandler):
         stack = self._removeStackDupes(term.getTermStack())
 
         setAppVar("tableHdr",False)
-        if term.isClass() or term.isDataType() or term.isEnumeration() or term.isEnumerationValue():
+        if term.isClass() or term.isDataType():
             for p in stack:
                 self.ClassProperties(p, p==[0], out=self, term=term)
             if getAppVar("tableHdr"):
                 self.write("\n\n</table>\n\n")
 
 
-            self.emitClassIncomingProperties(term)
+            #self.emitClassIncomingProperties(term)
 
             self.emitClassExtensionSuperclasses(term,layers)
 
@@ -1503,12 +1489,19 @@ class ShowUnit (webapp2.RequestHandler):
 
         elif term.isProperty():
             self.emitAttributeProperties(term)
+            
+        elif term.isEnumeration() or term.isEnumerationValue():
+            self.emitEnums(term)
+            #self.emitClassIncomingProperties(term)
+
 
         elif term.isDataType():
-            self.emitClassIncomingProperties(term)
+            pass
 
         self.emitSupersedes(term)
         self.emitchildren(term)
+        if not (term.isProperty() or term.getId() == "Enumeration"):
+            self.emitClassIncomingProperties(term)
         self.emitAcksAndSources(term)
         self.emitTermExamples(term)
         
@@ -1523,6 +1516,14 @@ class ShowUnit (webapp2.RequestHandler):
         PageStore.put(term.getId(),page)
 
         self.response.write(page)
+        
+    def emitEnums(self,term):
+        if term.getId() == "Enumeration":
+            self.write("<br/>")
+        elif term.isEnumeration():
+            self.write("<br/>An Enumeration with:")
+        elif term.isEnumerationValue():
+            self.write("<br/>A member value for enumeration type: %s" % self.ml(term.parent))
 
     def emitTermExamples(self,term):
         examples = GetExamples(term)
@@ -1598,32 +1599,33 @@ class ShowUnit (webapp2.RequestHandler):
             children = term.getSubs()
 
             #log.info("CHILDREN: %s" % VTerm.term2str(children))
-            isEnumAnc = VTerm.isEnumerationAncestor(term)
-
             if (len(children) > 0):
-                buff = StringIO.StringIO()
-                buff2 = StringIO.StringIO()
+                subtypes = StringIO.StringIO()
+                members = StringIO.StringIO()
                 for c in children:
                     if c.superseded() or self.hideAtticTerm(c):
                         continue
-                    if isEnumAnc and (c.parent == term or term.isEnumeration()):
-                        buff2.write("<li> %s </li>" % (self.ml(c)))
+                    if c.parent == term and term.isEnumeration():
+                        members.write("<li> %s </li>" % (self.ml(c)))
                     else:
-                        buff.write("<li> %s </li>" % (self.ml(c)))
+                        subtypes.write("<li> %s </li>" % (self.ml(c)))
 
-                if (len(buff.getvalue()) > 0 and not term.isProperty()):
+                if (len(subtypes.getvalue()) > 0 and not term.isProperty()):
                     if term.isDataType():
                         self.write("<br/><b><a %s>More specific DataTypes</a></b><ul>" % self.showlink("subtypes"))
-                    elif term.isClass() or term.isEnumerationValue():
+                    elif term.isEnumeration():
+                        self.write("<br/><b><a %s>Enumeration Subtypes</a></b><ul>" % self.showlink("subtypes"))
+                    elif term.isClass():
                         self.write("<br/><b><a %s>More specific Types</a></b><ul>" % self.showlink("subtypes"))
-                    self.write(buff.getvalue())
+                    self.write(subtypes.getvalue())
 
-                if isEnumAnc and len(buff2.getvalue()) > 0:
+                if len(members.getvalue()) > 0:
                     self.write("<br/><b><a %s>Enumeration members</a></b><ul>" % self.showlink("enumbers"))
-                    self.write(buff2.getvalue())
+                    self.write(members.getvalue())
                 self.write("</ul>")
 
-                buff.close()
+                subtypes.close()
+                members.close()
 
     def emitHTTPHeaders(self, node):
         if ENABLE_CORS:

@@ -72,6 +72,7 @@ class VTerm():
         self.sources = None
         self.aks = None
         self.examples = None
+        self.enum = None
 
         VTERMS[self.uri] = self
         
@@ -79,7 +80,9 @@ class VTerm():
             self.ttype = VTerm.CLASS
             if self.uri == str(DATATYPEURI): #The base DataType is defined as a Class
                 self.ttype = VTerm.DATATYPE
-            if self.uri == str(ENUMERATIONURI): #The base Enumeration Type is defined as a Class
+            elif self.uri == str(ENUMERATIONURI): #The base Enumeration Type is defined as a Class
+                self.ttype = VTerm.ENUMERATION
+            elif self.isEnumeration():
                 self.ttype = VTerm.ENUMERATION
         elif ttype == rdflib.RDF.Property:
             self.ttype = VTerm.PROPERTY
@@ -93,13 +96,14 @@ class VTerm():
         else:
             #log.info("checking parent %s" % ttype)
             self.parent = VTerm._getTerm(str(ttype))
-            if VTerm.isEnumerationAncestor(self.parent):
+            if self.parent.isEnumeration:
                 self.ttype = VTerm.ENUMERATIONVALUE
                 #log.info("%s is ENUMERATIONVALUE" % self.getId())
             else:
-                self.ttype = self.parent.getType()
+                raise Exception("Unknown parent type '%s' for term: %s" % (ttype, self.uri))
 
         #log.info("VTerm %s %s" %(self.ttype,self.id))
+
     def __str__(self):
         return ("<%s: '%s'>") % (self.ttype,self.id)
     def getType(self):
@@ -120,6 +124,20 @@ class VTerm():
         return False
 
     def isEnumeration(self):
+        if self.enum == None:
+            query = """ 
+            ASK  {
+                    %s rdfs:subClassOf* %s.
+             }""" % (uriWrap(toFullId(self.id)),uriWrap(ENUMERATIONURI))
+            ret = [] 
+            #log.info("query %s" % query)
+            res = VTerm.query(query)
+            #log.info("res %d" % len(res))
+            for row in res:
+                self.enum = row
+        return self.enum
+            
+        
         return self.ttype == VTerm.ENUMERATION
     def isEnumerationValue(self):
         return self.ttype == VTerm.ENUMERATIONVALUE
@@ -252,14 +270,26 @@ class VTerm():
                 term = VTerm._getTerm(obj,createReference=True)
                 sortedAddUnique(self.domains,term)
         return self.domains
-    def getTargetOf(self):
+
+    def getTargetOf(self,plusparents=False):
         if not self.targetOf:
             self.targetOf = []
             subs = self.loadSubjects("schema:rangeIncludes")
             for sub in subs:
                 term = VTerm._getTerm(sub,createReference=True)
                 sortedAddUnique(self.targetOf,term)
-        return self.targetOf
+        ret = self.targetOf
+        if plusparents:
+            targets = self.targetOf
+            for s in self.getSupers():
+                if s.getId() == "Enumeration" or s.getId() == "Thing":
+                    break
+                ptargets = s.getTargetOf()
+                for t in ptargets:
+                    sortedAddUnique(targets,t)
+            ret = targets
+                
+        return ret
     def getEquivalents(self):
         if not self.equivalents:
             self.equivalents = self.loadObjects("owl:equivalentClass")
@@ -387,7 +417,7 @@ class VTerm():
                 continue
             sortedAddUnique(self.subs,sub)
             
-        if self.ttype == VTerm.ENUMERATION or self.ttype == VTerm.DATATYPE or VTerm.isEnumerationAncestor(self):
+        if self.ttype == VTerm.ENUMERATION or self.ttype == VTerm.DATATYPE:
             subjects = self.loadSubjects("a") #Enumerationvalues have an Enumeration as a type
             for child in subjects:
                 sub = VTerm._getTerm(str(child))
@@ -571,14 +601,6 @@ class VTerm():
     @staticmethod
     def getAllEnumerations(layer=None):
         return VTerm.getAllTerms(ttype = VTerm.ENUMERATION,layer=layer)
-
-    @staticmethod
-    def isEnumerationAncestor(t):
-        if not t:
-            return False
-        if t.isEnumeration() or VTerm.isEnumerationAncestor(t.parent):
-            return True
-        return False
 
     @staticmethod
     def getAllTerms(ttype=None,layer=None,supressSourceLinks=False):
