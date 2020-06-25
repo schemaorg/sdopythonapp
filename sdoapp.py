@@ -838,10 +838,10 @@ class ShowUnit (webapp2.RequestHandler):
                 continue
            count = 0
            prev = None
+           enuminrow = False
            while(len(self.crumbStacks[row]) > 0):
                 propertyval = None
                 n = self.crumbStacks[row].pop()
-
                 if((len(self.crumbStacks[row]) == 1) and n and
                     not ":" in n.id) : #penultimate crumb that is not a non-schema reference
                     if term.isProperty():
@@ -849,9 +849,10 @@ class ShowUnit (webapp2.RequestHandler):
                             propertyval = "rdfs:subPropertyOf"
                     else:
                         propertyval = "rdfs:subClassOf"
-
+                if n.getId() == "Enumeration":
+                    enuminrow=True
                 if(count > 0):
-                    if((len(self.crumbStacks[row]) == 0) and enuma and term.getParent() == prev ): #final crumb
+                    if((len(self.crumbStacks[row]) == 0) and enuma and enuminrow and term.getParent() == prev ): #final crumb
                         thisrow += " :: "
                     else:
                         thisrow += " &gt; "
@@ -1473,37 +1474,43 @@ class ShowUnit (webapp2.RequestHandler):
         #log.info("Stak %s" % term.getTermStack())
 
         self.emitUnitHeaders(term) # writes <h1><table>...
-        stack = self._removeStackDupes(term.getTermStack())
+        tstack = self._removeStackDupes(term.getTermStack())
 
         setAppVar("tableHdr",False)
         if term.isClass() or term.isDataType():
-            for p in stack:
-                self.ClassProperties(p, p==[0], out=self, term=term)
-            if getAppVar("tableHdr"):
-                self.write("\n\n</table>\n\n")
+            self.emitClassProperties(term,termstack=tstack,out=self)
+            #for p in stack:
+                #self.ClassProperties(p, p==[0], out=self, term=term)
+            #if getAppVar("tableHdr"):
+                #self.write("\n\n</table>\n\n")
 
-
-            #self.emitClassIncomingProperties(term)
 
             self.emitClassExtensionSuperclasses(term,layers)
-
-            #self.emitClassExtensionProperties(p,layers) #Not needed since extension defined properties displayed in main listing
 
         elif term.isProperty():
             self.emitAttributeProperties(term)
             
         elif term.isEnumeration() or term.isEnumerationValue():
             self.emitEnums(term)
-            #self.emitClassIncomingProperties(term)
+            self.emitchildren(term)
+            supers = term.getSupers()
+            for subOf in supers:
+                if not subOf.isEnumeration(): #An enumeration or value that is also subcass of a type
+                    self.write("<br/>")
+                    supers.extend(tstack)
+                    stack = self._removeStackDupes(supers)
+                    self.emitClassProperties(term,termstack=stack,out=self)
+                    break
 
 
         elif term.isDataType():
             pass
 
-        self.emitSupersedes(term)
-        self.emitchildren(term)
         if not (term.isProperty() or term.getId() == "Enumeration"):
             self.emitClassIncomingProperties(term)
+        self.emitSupersedes(term)
+        if not (term.isEnumeration() or term.isEnumerationValue()):
+            self.emitchildren(term)
         self.emitAcksAndSources(term)
         self.emitTermExamples(term)
         
@@ -1518,6 +1525,12 @@ class ShowUnit (webapp2.RequestHandler):
         PageStore.put(term.getId(),page)
 
         self.response.write(page)
+        
+    def emitClassProperties(self,term,termstack,out):
+        for p in termstack:
+            self.ClassProperties(p, p==[0], out=out, term=term)
+        if getAppVar("tableHdr"):
+            out.write("\n\n</table>\n\n")
         
     def emitEnums(self,term):
         if term.getId() == "Enumeration":
