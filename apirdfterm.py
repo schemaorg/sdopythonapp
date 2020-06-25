@@ -72,6 +72,8 @@ class VTerm():
         self.sources = None
         self.aks = None
         self.examples = None
+        self.enum = None
+        self._pstacks = None
 
         VTERMS[self.uri] = self
         
@@ -79,7 +81,9 @@ class VTerm():
             self.ttype = VTerm.CLASS
             if self.uri == str(DATATYPEURI): #The base DataType is defined as a Class
                 self.ttype = VTerm.DATATYPE
-            if self.uri == str(ENUMERATIONURI): #The base Enumeration Type is defined as a Class
+            elif self.uri == str(ENUMERATIONURI): #The base Enumeration Type is defined as a Class
+                self.ttype = VTerm.ENUMERATION
+            elif self.isEnumeration():
                 self.ttype = VTerm.ENUMERATION
         elif ttype == rdflib.RDF.Property:
             self.ttype = VTerm.PROPERTY
@@ -93,13 +97,14 @@ class VTerm():
         else:
             #log.info("checking parent %s" % ttype)
             self.parent = VTerm._getTerm(str(ttype))
-            if VTerm.isEnumerationAncestor(self.parent):
+            if self.parent.isEnumeration:
                 self.ttype = VTerm.ENUMERATIONVALUE
                 #log.info("%s is ENUMERATIONVALUE" % self.getId())
             else:
-                self.ttype = self.parent.getType()
+                raise Exception("Unknown parent type '%s' for term: %s" % (ttype, self.uri))
 
         #log.info("VTerm %s %s" %(self.ttype,self.id))
+
     def __str__(self):
         return ("<%s: '%s'>") % (self.ttype,self.id)
     def getType(self):
@@ -120,6 +125,20 @@ class VTerm():
         return False
 
     def isEnumeration(self):
+        if self.enum == None:
+            query = """ 
+            ASK  {
+                    %s rdfs:subClassOf* %s.
+             }""" % (uriWrap(toFullId(self.id)),uriWrap(ENUMERATIONURI))
+            ret = [] 
+            #log.info("query %s" % query)
+            res = VTerm.query(query)
+            #log.info("res %d" % len(res))
+            for row in res:
+                self.enum = row
+        return self.enum
+            
+        
         return self.ttype == VTerm.ENUMERATION
     def isEnumerationValue(self):
         return self.ttype == VTerm.ENUMERATIONVALUE
@@ -141,7 +160,7 @@ class VTerm():
             comms = self.loadObjects(rdflib.RDFS.comment)
             for c in comms:
                 self.comments.append(c)
-        return self.comments
+        return self.comments[:] #Return copy of list
     def getComment(self):
         if not self.comment:
             self.loadComment()
@@ -169,7 +188,7 @@ class VTerm():
             for sub in subs:
                 term = VTerm._getTerm(sub,createReference=True)
                 sortedAddUnique(self.supersedes,term)
-        return self.supersedes
+        return self.supersedes[:] #Return copy of list
     def getSourcesAndAcks(self):
         if not self.srcaks:
             self.srcaks = []
@@ -194,15 +213,15 @@ class VTerm():
                     else:
                         self.sources.append(ao.getUri())
 
-        return self.srcaks
+        return self.srcaks[:] #Return copy of list
     def getSources(self):
         if not self.sources:
             self.getSourcesAndAcks()
-        return self.sources
+        return self.sources[:] #Return copy of list
     def getAcknowledgements(self):
         if not self.aks:
             self.getSourcesAndAcks()
-        return self.aks
+        return self.aks[:] #Return copy of list
     def getCategory(self):
         return self.category
     def getLayer(self):
@@ -212,19 +231,21 @@ class VTerm():
             self.inverseOf = VTerm._getTerm(self.loadValue("schema:inverseOf"))
         return self.inverseOf
     def getSupers(self):
-        if not self.supers:
+        loaded = False
+        if self.supers == None:
+            loaded = True
             self.loadsupers()
-        return self.supers
+        return self.supers[:] #Return copy of list
     def getTermStack(self):
         if not self.termStack:
             self.termStack = [self]
             for s in self.getSupers():
                 self.termStack.extend(s.getTermStack())
-        return self.termStack
+        return self.termStack[:] #Return copy of list
     def getSubs(self):
         if not self.subs:
             self.loadsubs()
-        return self.subs
+        return self.subs[:] #Return copy of list
     def getProperties(self):
         if not self.props:
             self.props = []
@@ -232,7 +253,7 @@ class VTerm():
             for sub in subs:
                 term = VTerm._getTerm(sub,createReference=True)
                 sortedAddUnique(self.props,term)
-        return self.props
+        return self.props[:] #Return copy of list
     def getPropUsedOn(self):
         raise Exception("Not implemented yet")
         return self.propUsedOn
@@ -243,7 +264,7 @@ class VTerm():
             for obj in objs:
                 term = VTerm._getTerm(obj,createReference=True)
                 sortedAddUnique(self.ranges,term)
-        return self.ranges
+        return self.ranges[:] #Return copy of list
     def getDomains(self):
         if not self.domains:
             self.domains = []
@@ -251,21 +272,36 @@ class VTerm():
             for obj in objs:
                 term = VTerm._getTerm(obj,createReference=True)
                 sortedAddUnique(self.domains,term)
-        return self.domains
-    def getTargetOf(self):
+        return self.domains[:] #Return copy of list
+
+    def getTargetOf(self,plusparents=False,stopontarget=False):
         if not self.targetOf:
             self.targetOf = []
             subs = self.loadSubjects("schema:rangeIncludes")
             for sub in subs:
                 term = VTerm._getTerm(sub,createReference=True)
                 sortedAddUnique(self.targetOf,term)
-        return self.targetOf
+        ret = self.targetOf
+        if not (len(self.targetOf) and stopontarget):
+            if plusparents:
+                targets = self.targetOf
+                for s in self.getSupers():
+                    if s.getId() == "Enumeration" or s.getId() == "Thing":
+                        break
+                    ptargets = s.getTargetOf()
+                    for t in ptargets:
+                        sortedAddUnique(targets,t)
+                    if len(targets) and stopontarget:
+                        break
+                ret = targets
+                
+        return ret[:] #Return copy of list
     def getEquivalents(self):
         if not self.equivalents:
             self.equivalents = self.loadObjects("owl:equivalentClass")
             self.equivalents.extend(self.loadObjects("owl:equivalentProperty"))
         #log.info("equivalents: %s" % self.equivalents)
-        return self.equivalents
+        return self.equivalents[:] #Return copy of list
     def inLayers(self,layers):
         return self.layer in layers
 
@@ -340,7 +376,6 @@ class VTerm():
         
     def loadsupers(self):
         fullId = toFullId(self.id)
-        #log.info("loadsupers(%s)" % self.id)
         query = """ 
         SELECT ?sup WHERE {
              {
@@ -360,9 +395,6 @@ class VTerm():
                 log.debug("Failed to get term for %s" % row.sup)
                 continue
             sortedAddUnique(self.supers,super)
-        #if self.isEnumerationValue():
-            #sortedAddUnique(self.supers,self.parent)
-            
 
 
     def loadsubs(self):
@@ -387,7 +419,7 @@ class VTerm():
                 continue
             sortedAddUnique(self.subs,sub)
             
-        if self.ttype == VTerm.ENUMERATION or self.ttype == VTerm.DATATYPE or VTerm.isEnumerationAncestor(self):
+        if self.ttype == VTerm.ENUMERATION or self.ttype == VTerm.DATATYPE:
             subjects = self.loadSubjects("a") #Enumerationvalues have an Enumeration as a type
             for child in subjects:
                 sub = VTerm._getTerm(str(child))
@@ -404,8 +436,8 @@ class VTerm():
             self.ttype = VTerm.ENUMERATIONVALUE
                             
     def getParentPaths(self, cstack=None):
+        self._pstacks = []
         with TERMSLOCK:
-            self._pstacks = []
             if cstack == None:
                 cstack = []
             self._pstacks.append(cstack)
@@ -415,14 +447,14 @@ class VTerm():
     def _getParentPaths(self, term, cstack):
         if ":" in term.getId():  #Suppress external class references
             return
-
+            
         cstack.append(term)
         tmpStacks = []
         tmpStacks.append(cstack)
         supers = term.getSupers()
         if term.getParent():
             supers.append(term.getParent())
-    
+
         for i in range(len(supers)):
             if(i > 0):
                 t = cstack[:]
@@ -433,7 +465,6 @@ class VTerm():
         for p in supers:
             self._getParentPaths(p,tmpStacks[x])
             x += 1
-            
 
     @staticmethod
     def checkForEnumVal(term):
@@ -571,14 +602,6 @@ class VTerm():
     @staticmethod
     def getAllEnumerations(layer=None):
         return VTerm.getAllTerms(ttype = VTerm.ENUMERATION,layer=layer)
-
-    @staticmethod
-    def isEnumerationAncestor(t):
-        if not t:
-            return False
-        if t.isEnumeration() or VTerm.isEnumerationAncestor(t.parent):
-            return True
-        return False
 
     @staticmethod
     def getAllTerms(ttype=None,layer=None,supressSourceLinks=False):
