@@ -1496,18 +1496,21 @@ class ShowUnit (webapp2.RequestHandler):
             if term.isEnumeration():
                 supers = term.getSupers()
             else: #term.isEnumerationValue()
-                supers = term.getParent().getSupers()
-                
+                supers = [term.getParent()]
+                supers.extend(term.getParent().getSupers())
+
             displayprops = False
+            parentsups = []
             for subOf in supers:
                 if not subOf.isEnumeration(): #An enumeration or value that is also subcass of a type
+                    parentsups = supers
                     displayprops = True
                     break
 
             if displayprops:
                 self.write("<br/>")
-                sups = term.getSupers()
-                sups.extend(tstack)
+                sups = parentsups
+                sups.extend(term.getSupers())
                 stack = self._removeStackDupes(sups)
                 self.emitClassProperties(term,termstack=stack,out=self)
 
