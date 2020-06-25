@@ -1493,14 +1493,23 @@ class ShowUnit (webapp2.RequestHandler):
         elif term.isEnumeration() or term.isEnumerationValue():
             self.emitEnums(term)
             self.emitchildren(term)
-            supers = term.getSupers()
+            if term.isEnumeration():
+                supers = term.getSupers()
+            else: #term.isEnumerationValue()
+                supers = term.getParent().getSupers()
+                
+            displayprops = False
             for subOf in supers:
                 if not subOf.isEnumeration(): #An enumeration or value that is also subcass of a type
-                    self.write("<br/>")
-                    supers.extend(tstack)
-                    stack = self._removeStackDupes(supers)
-                    self.emitClassProperties(term,termstack=stack,out=self)
+                    displayprops = True
                     break
+
+            if displayprops:
+                self.write("<br/>")
+                sups = term.getSupers()
+                sups.extend(tstack)
+                stack = self._removeStackDupes(sups)
+                self.emitClassProperties(term,termstack=stack,out=self)
 
 
         elif term.isDataType():

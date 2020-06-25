@@ -73,6 +73,7 @@ class VTerm():
         self.aks = None
         self.examples = None
         self.enum = None
+        self._pstacks = None
 
         VTERMS[self.uri] = self
         
@@ -159,7 +160,7 @@ class VTerm():
             comms = self.loadObjects(rdflib.RDFS.comment)
             for c in comms:
                 self.comments.append(c)
-        return self.comments
+        return self.comments[:] #Return copy of list
     def getComment(self):
         if not self.comment:
             self.loadComment()
@@ -187,7 +188,7 @@ class VTerm():
             for sub in subs:
                 term = VTerm._getTerm(sub,createReference=True)
                 sortedAddUnique(self.supersedes,term)
-        return self.supersedes
+        return self.supersedes[:] #Return copy of list
     def getSourcesAndAcks(self):
         if not self.srcaks:
             self.srcaks = []
@@ -212,15 +213,15 @@ class VTerm():
                     else:
                         self.sources.append(ao.getUri())
 
-        return self.srcaks
+        return self.srcaks[:] #Return copy of list
     def getSources(self):
         if not self.sources:
             self.getSourcesAndAcks()
-        return self.sources
+        return self.sources[:] #Return copy of list
     def getAcknowledgements(self):
         if not self.aks:
             self.getSourcesAndAcks()
-        return self.aks
+        return self.aks[:] #Return copy of list
     def getCategory(self):
         return self.category
     def getLayer(self):
@@ -230,19 +231,21 @@ class VTerm():
             self.inverseOf = VTerm._getTerm(self.loadValue("schema:inverseOf"))
         return self.inverseOf
     def getSupers(self):
-        if not self.supers:
+        loaded = False
+        if self.supers == None:
+            loaded = True
             self.loadsupers()
-        return self.supers
+        return self.supers[:] #Return copy of list
     def getTermStack(self):
         if not self.termStack:
             self.termStack = [self]
             for s in self.getSupers():
                 self.termStack.extend(s.getTermStack())
-        return self.termStack
+        return self.termStack[:] #Return copy of list
     def getSubs(self):
         if not self.subs:
             self.loadsubs()
-        return self.subs
+        return self.subs[:] #Return copy of list
     def getProperties(self):
         if not self.props:
             self.props = []
@@ -250,7 +253,7 @@ class VTerm():
             for sub in subs:
                 term = VTerm._getTerm(sub,createReference=True)
                 sortedAddUnique(self.props,term)
-        return self.props
+        return self.props[:] #Return copy of list
     def getPropUsedOn(self):
         raise Exception("Not implemented yet")
         return self.propUsedOn
@@ -261,7 +264,7 @@ class VTerm():
             for obj in objs:
                 term = VTerm._getTerm(obj,createReference=True)
                 sortedAddUnique(self.ranges,term)
-        return self.ranges
+        return self.ranges[:] #Return copy of list
     def getDomains(self):
         if not self.domains:
             self.domains = []
@@ -269,7 +272,7 @@ class VTerm():
             for obj in objs:
                 term = VTerm._getTerm(obj,createReference=True)
                 sortedAddUnique(self.domains,term)
-        return self.domains
+        return self.domains[:] #Return copy of list
 
     def getTargetOf(self,plusparents=False,stopontarget=False):
         if not self.targetOf:
@@ -292,13 +295,13 @@ class VTerm():
                         break
                 ret = targets
                 
-        return ret
+        return ret[:] #Return copy of list
     def getEquivalents(self):
         if not self.equivalents:
             self.equivalents = self.loadObjects("owl:equivalentClass")
             self.equivalents.extend(self.loadObjects("owl:equivalentProperty"))
         #log.info("equivalents: %s" % self.equivalents)
-        return self.equivalents
+        return self.equivalents[:] #Return copy of list
     def inLayers(self,layers):
         return self.layer in layers
 
@@ -373,7 +376,6 @@ class VTerm():
         
     def loadsupers(self):
         fullId = toFullId(self.id)
-        #log.info("loadsupers(%s)" % self.id)
         query = """ 
         SELECT ?sup WHERE {
              {
@@ -393,9 +395,6 @@ class VTerm():
                 log.debug("Failed to get term for %s" % row.sup)
                 continue
             sortedAddUnique(self.supers,super)
-        #if self.isEnumerationValue():
-            #sortedAddUnique(self.supers,self.parent)
-            
 
 
     def loadsubs(self):
@@ -437,8 +436,8 @@ class VTerm():
             self.ttype = VTerm.ENUMERATIONVALUE
                             
     def getParentPaths(self, cstack=None):
+        self._pstacks = []
         with TERMSLOCK:
-            self._pstacks = []
             if cstack == None:
                 cstack = []
             self._pstacks.append(cstack)
@@ -448,14 +447,14 @@ class VTerm():
     def _getParentPaths(self, term, cstack):
         if ":" in term.getId():  #Suppress external class references
             return
-
+            
         cstack.append(term)
         tmpStacks = []
         tmpStacks.append(cstack)
         supers = term.getSupers()
         if term.getParent():
             supers.append(term.getParent())
-    
+
         for i in range(len(supers)):
             if(i > 0):
                 t = cstack[:]
@@ -466,7 +465,6 @@ class VTerm():
         for p in supers:
             self._getParentPaths(p,tmpStacks[x])
             x += 1
-            
 
     @staticmethod
     def checkForEnumVal(term):
