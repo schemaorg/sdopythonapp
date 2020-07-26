@@ -965,7 +965,7 @@ class ShowUnit (webapp2.RequestHandler):
                 out.write("<tr class=\"supertype\">\n     <th class=\"supertype-name\" colspan=\"3\">Properties from %s</th>\n  \n</tr>\n\n<tbody class=\"supertype\">\n  " % (class_head))
                 headerPrinted = True
 
-            out.write("<tr typeof=\"rdfs:Property\" resource=\"%s\">\n    \n      <th class=\"prop-nam\" scope=\"row\">\n\n<code property=\"rdfs:label\">%s</code>\n    </th>\n " % (prop.getUri(), self.ml(prop)))
+            out.write("<tr typeof=\"rdf:Property\" resource=\"%s\">\n    \n      <th class=\"prop-nam\" scope=\"row\">\n\n<code property=\"rdfs:label\">%s</code>\n    </th>\n " % (prop.getUri(), self.ml(prop)))
             out.write("<td class=\"prop-ect\">\n")
             first_range = True
             for r in ranges:
@@ -1356,7 +1356,7 @@ class ShowUnit (webapp2.RequestHandler):
         rdfs_type = 'rdfs:Class'
         entry = term.id
         if term.isProperty():
-            rdfs_type = 'rdfs:Property'
+            rdfs_type = 'rdf:Property'
 
         desc = entry
         desc = self.getMetaDescription(term, lengthHint=200)
@@ -1384,7 +1384,7 @@ class ShowUnit (webapp2.RequestHandler):
         """
         buff = sdoStringIO()
 
-        rdfs_type = 'rdfs:Property'
+        rdfs_type = 'rdf:Property'
         anode = True
         if isinstance(node, str):
             entry = node
@@ -1407,7 +1407,7 @@ class ShowUnit (webapp2.RequestHandler):
             elif node.isClass():
                 rdfs_type = 'rdfs:Class'
             elif node.isAttribute():
-                rdfs_type = 'rdfs:Property'
+                rdfs_type = 'rdf:Property'
 
         desc = entry
         if anode:
